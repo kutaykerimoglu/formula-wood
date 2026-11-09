@@ -187,11 +187,23 @@ function showReport(){
 }
 $('reference').onchange=showReport;
 function progress(l,t){if(t>=l.total)return l.p.length;let i=0;while(l.time[i+1]<t)i++;return i+(t-l.time[i])/(l.time[i+1]-l.time[i]);}
-function renderRace(){cancelAnimationFrame(frame);if(tab!=='race')return;txt('raceName',names[id]);if(!race){$('sectorReport').classList.add('hidden');drawTrack($('raceMap'),circuit(id),[]);txt('clock','0.000 s');txt('raceInfo','Ready on the grid');return;}
+function showGap(seconds,finished,target){
+ const ms=Math.round(Math.abs(seconds)*1000);
+ const state=ms===0?'level':seconds<0?'ahead':'behind';
+ const panel=$('gapPanel');
+ panel.setAttribute('data-state',state);
+ panel.classList.remove('hidden');
+ txt('gapPhase',finished?'Finish':'Lap 1 / 1');
+ txt('gapState',state);
+ const sign=ms===0?'':seconds<0?'−':'+';
+ txt('gapTime',sign+(ms/1000).toFixed(3)+' s');
+ txt('gapTarget','vs '+target);
+}
+function renderRace(){cancelAnimationFrame(frame);if(tab!=='race')return;txt('raceName',names[id]);if(!race){$('gapPanel').classList.add('hidden');$('sectorReport').classList.add('hidden');drawTrack($('raceMap'),circuit(id),[]);txt('clock','0.000 s');txt('raceInfo','Ready on the grid');return;}
  let now=performance.now();race.elapsed=Math.min(race.run.total,race.elapsed+(now-race.last)*rate/1000);race.last=now;const t=race.elapsed,r=race.run,g=race.ghost,pos=progress(r,t),idx=Math.min(r.p.length-1,Math.floor(pos)),gt=g.time[idx]+(pos-idx)*(g.time[idx+1]-g.time[idx]),gap=t-gt;
- drawTrack($('raceMap'),r.p,[{progress:progress(g,t),ghost:true},{progress:pos}]);txt('clock',fmt(t));txt('raceInfo',(t>=r.total?'Finish':'Lap 1 / 1')+' · '+(gap>=0?'+':'')+gap.toFixed(3)+' s vs '+race.label);
+ drawTrack($('raceMap'),r.p,[{progress:progress(g,t),ghost:true},{progress:pos}]);txt('clock',fmt(t));showGap(gap,t>=r.total,race.label);
  if(t<r.total){frame=requestAnimationFrame(renderRace);return;}if(!race.finished){race.finished=true;const rec=data[id];if(!rec.best||r.total<rec.best){rec.best=r.total;rec.ghost=race.s;}rec.previous=race.s;save();showReport();submit(race.s,id);}}
-function start(){let s=structuredClone(setup());
+function start(){txt('raceInfo','');let s=structuredClone(setup());
  const rec=data[id],references={stock:cards[id].stock};
  if(valid(rec.previous))references.previous=lap(rec.previous,id);
  if(valid(rec.snapshot))references.saved=lap(rec.snapshot,id);

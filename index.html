@@ -17,6 +17,14 @@
 
 .savedSlot,.reportTitle,.trial{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}.savedSlot{margin-top:12px;border-top:1px solid #cbd0c0;padding-top:10px}.savedSlot button,.trial button{font-size:12px;padding:5px 9px}.trial{margin-bottom:16px;border:1px solid #bcc4b0;padding:12px 16px;background:#e8edde;border-radius:7px}.trial p{font-size:13px}.trial output{font-weight:600}.trial button{margin:2px}.reportTitle h3{font:normal 20px Georgia}.splits{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:8px 0}.splits div{border-left:4px solid var(--ink);padding:5px 9px;background:#eeeee2}.splits b,.splits output{display:block}.splits small{font-size:10px}.splits output{font-size:13px}#sectorReport{margin:8px 0 12px}
 .setupOption,.pressurePair,.pressurePair label{display:flex;align-items:center;justify-content:space-between;gap:8px}.setupOption,.pressurePair{margin:4px 0 7px}.pressurePair{flex-wrap:wrap}.setupOption select,.pressurePair select{font:13px Arial;text-transform:none;letter-spacing:normal}.workstation .workArea{align-items:start}.workstation .carStation{position:sticky;top:0}.workstation .stage{flex:none;height:clamp(265px,50vh,570px)}@media(max-width:640px){.workstation .stage{height:clamp(170px,27vh,245px);min-height:0}.workstation .carStation{position:static}}@media(max-width:640px) and (min-height:640px){.workstation .carStation{position:sticky}}
+
+.gapPanel{--signal:#e5e8de;display:flex;align-items:center;justify-content:space-between;gap:14px;border-left:8px solid var(--signal);background:#28302d;color:#f4f6ed;border-radius:4px;padding:9px 16px;margin:4px 0 10px}
+.gapPanel[data-state="ahead"]{--signal:#67f59a;background:#123b2a}
+.gapPanel[data-state="behind"]{--signal:#ff8888;background:#482028}
+.gapPanel strong,.gapPanel b{display:block;color:var(--signal)}
+.gapPanel strong{font:bold italic clamp(20px,3vw,32px) Arial,sans-serif;text-transform:uppercase;line-height:1.05}
+.gapPanel b{font:700 clamp(27px,4.6vw,46px)/1 ui-monospace,monospace;font-variant-numeric:tabular-nums}
+.gapPanel small{color:#f2f4ed;font-size:10px}.gapNumbers{text-align:right}
 </style>
 <header><b><i>≋</i> Timber Formula</b><nav><button class="active" data-tab="tracks">Tracks</button><button data-tab="shop">Workshop</button><button data-tab="race">Lap view</button><button data-tab="board">Leaderboard</button></nav></header>
 <main><div class="heading"><h1 id="title">Tracks</h1><span class="tag">1:12 · Tabletop series</span></div>
@@ -52,5 +60,9 @@
     <div class="specs"><span>Race mass <b>180 g</b></span><span>Ballast <b id="ballast"></b></span><span>Motor <b>7 W</b></span></div>
   </div>
 </section>
-<section id="race" class="panel hidden"><div class="row"><h2 id="raceName"></h2><span class="mono" id="clock"></span></div><div id="sectorReport" class="hidden"><div class="reportTitle"><h3>Sector times</h3><label>Compare with <select id="reference"><option value="previous">Previous run</option><option value="stock">Stock car</option><option value="saved">Saved setup</option></select></label></div><div class="splits" id="splits"></div><p id="lapBest" class="sub"></p></div><canvas class="raceCanvas" id="raceMap"></canvas><div class="tools"><span id="raceInfo"></span><div class="group"><button id="speed">1× speed</button><button id="again">Run again</button><button data-go="shop">Workshop</button></div></div></section>
+<section id="race" class="panel hidden"><div class="row"><h2 id="raceName"></h2><span class="mono" id="clock"></span></div>
+<div id="gapPanel" class="gapPanel hidden" aria-label="Lap timing comparison">
+ <div><small id="gapPhase"></small><strong id="gapState"></strong></div>
+ <div class="gapNumbers"><b id="gapTime"></b><small id="gapTarget"></small></div>
+</div><div id="sectorReport" class="hidden"><div class="reportTitle"><h3>Sector times</h3><label>Compare with <select id="reference"><option value="previous">Previous run</option><option value="stock">Stock car</option><option value="saved">Saved setup</option></select></label></div><div class="splits" id="splits"></div><p id="lapBest" class="sub"></p></div><canvas class="raceCanvas" id="raceMap"></canvas><div class="tools"><span id="raceInfo"></span><div class="group"><button id="speed">1× speed</button><button id="again">Run again</button><button data-go="shop">Workshop</button></div></div></section>
 <section id="board" class="panel screen hidden"><div class="row"><h2 id="boardName"></h2><label>Driver <input class="boardInput" id="driver" maxlength="20"></label></div><div id="scores"></div></section></main><script type="module">/* APP */</script></html>
