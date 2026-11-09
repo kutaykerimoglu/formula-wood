@@ -10,7 +10,32 @@ let id=Number(data.track)||0,part=0,mode='chisel',history=[],drag=null,tab='shop
 const car=$('car'),renderer=makeRenderer(car);
 function setup(){const rec=data[id]??={};if(!valid(rec.s))rec.s=blank();return rec.s;}
 function message(t){txt('status',t);}
-function choosePart(p){part=p;txt('partName',parts[p]);Array.from($('parts').children).forEach((b,i)=>b.classList.toggle('chosen',i===p));}
+let hover=null;
+const hints=[
+ 'Front wing shape changes front tyre load. A cut near the leading edge can have a different effect from one near the trailing edge.',
+ 'The nose contributes to drag. A gradual taper can lower drag, while abrupt steps can add it back.',
+ 'Sidepod cuts change body drag and the airflow reaching the rear wing. Watch rear downforce as you shape the tail.',
+ 'Rear wing shape changes rear tyre load. Removing wood from different parts of the profile can raise or lower downforce.'
+];
+const stockAero=aero(blank());
+function updateAero(){
+ const current=aero(setup());
+ for(const key of ['drag','front','rear']){
+  const delta=(current[key]/stockAero[key]-1)*100;
+  const value=Math.abs(delta)<.000001?'0%':(delta>0?'+':'−')+(Math.abs(delta)<.01?'<0.01':Math.abs(delta).toFixed(2))+'%';
+  txt(key+'Delta',value);
+ }
+}
+function drawCar(){
+ renderer.draw(setup(),mode==='chisel'?{part,hover,radius:Number($('blade').value)*.65}:null);
+}
+const knifeMarkup=$('chisel').querySelector('svg').outerHTML;
+const knifeCursor='url("data:image/svg+xml,'+encodeURIComponent(knifeMarkup)+'") 2 29, crosshair';
+car.style.cursor=knifeCursor;
+function updateCue(){
+ txt('cutCue',mode==='orbit'?'Drag to rotate the car.':'Drag the knife over the gold '+parts[part].toLowerCase()+'.');
+}
+function choosePart(p){hover=null;txt('partHint',hints[p]);part=p;txt('partName',parts[p]);Array.from($('parts').children).forEach((b,i)=>b.classList.toggle('chosen',i===p));updateCue();if(tab==='shop')drawCar();}
 parts.forEach((p,i)=>{let b=document.createElement('button');b.textContent=p;b.onclick=()=>choosePart(i);$('parts').append(b);});choosePart(0);
 const widths=['Fine','Medium','Wide','Extra wide'];
 function updateWidth(){
@@ -19,7 +44,7 @@ function updateWidth(){
  $('blade').setAttribute('aria-valuetext',widths[size-1]);
  $('widthSample').style.setProperty('--sample',(size*5)+'px');
 }
-$('blade').oninput=updateWidth;
+$('blade').oninput=()=>{updateWidth();drawCar();};
 updateWidth();
 function selectCircuit(next){
  if(id!==next){history=[];race=null;}
@@ -51,18 +76,26 @@ function showTracks(){
 }
 $('driver').value=data.name||'Guest driver';$('driver').onchange=e=>{data.name=e.target.value.trim().slice(0,20)||'Guest driver';e.target.value=data.name;save();};
 for(let i=0;i<2;i++){const wrap=document.createElement('div');wrap.className='row';const label=document.createElement('label');label.htmlFor='a'+i;label.textContent=i?'Rear':'Front';const slider=document.createElement('input');slider.type='range';slider.min=0;slider.max=18;slider.step=1;slider.id='a'+i;const out=document.createElement('output');out.id='val'+i;slider.oninput=()=>{setup().angles[i]=+slider.value;save();refresh();};wrap.append(label,slider,out);$('angles').append(wrap);}
-function refresh(){const s=setup();txt('currentTrack',names[id]);renderer.draw(s);$('undo').disabled=!history.length;s.angles.forEach((v,i)=>{$('a'+i).value=v;txt('val'+i,v+'°');});txt('ballast',aero(s).ballast.toFixed(2)+' g');txt('stock',fmt(lap(blank(),id).total));txt('best',data[id].best?fmt(data[id].best):'—');txt('length',lap(s,id).length.toFixed(1)+' m');txt('trackNum','Circuit '+String(id+1).padStart(2,'0')+' of 20 · '+profiles[id]);drawTrack($('map'),circuit(id));}
-function setMode(m){mode=m;for(let v of ['orbit','chisel'])$(v).classList.toggle('chosen',v===m);car.style.cursor=m==='orbit'?'grab':'crosshair';message(m==='orbit'?'Drag to rotate the car.':'Drag the chisel across the selected surface.');}
-$('orbit').onclick=()=>setMode('orbit');$('chisel').onclick=()=>setMode('chisel');$('view').onchange=e=>{renderer.view(e.target.value);renderer.draw(setup());};
+function refresh(){const s=setup();txt('currentTrack',names[id]);drawCar();updateAero();$('undo').disabled=!history.length;s.angles.forEach((v,i)=>{$('a'+i).value=v;txt('val'+i,v+'°');});txt('ballast',aero(s).ballast.toFixed(2)+' g');txt('stock',fmt(lap(blank(),id).total));txt('best',data[id].best?fmt(data[id].best):'—');txt('length',lap(s,id).length.toFixed(1)+' m');txt('trackNum','Circuit '+String(id+1).padStart(2,'0')+' of 20 · '+profiles[id]);drawTrack($('map'),circuit(id));}
+function setMode(m){mode=m;for(let v of ['orbit','chisel'])$(v).classList.toggle('chosen',v===m);hover=null;car.style.cursor=m==='orbit'?'grab':knifeCursor;updateCue();drawCar();message(m==='orbit'?'Drag to rotate the car.':'Drag the chisel across the selected surface.');}
+$('orbit').onclick=()=>setMode('orbit');$('chisel').onclick=()=>setMode('chisel');$('view').onchange=e=>{renderer.view(e.target.value);drawCar();};
 $('undo').onclick=()=>{if(history.length){setup().cuts=history.pop();save();refresh();message('Last stroke undone.');}};
 function cut(x,y){const h=renderer.pick(x,y);if(!h||h.p!==part)return false;const r=+$('blade').value*.65,arr=setup().cuts[part];let changed=false;
  for(let i=Math.max(0,Math.floor(h.i-r));i<=Math.min(nx-1,h.i+r);i++)for(let j=0;j<ny;j++){const d=Math.hypot(i-h.i,j-h.j);if(d>r)continue;
  const k=i*ny+j,m=part===2?k:i*ny+ny-1-j;if(drag.seen.has(k))continue;drag.seen.add(k);drag.seen.add(m);if(arr[k]<12){arr[k]=arr[m]=Math.min(12,arr[k]+1);changed=true;}}
  return changed;}
 car.onpointerdown=e=>{if(drag)return;car.setPointerCapture(e.pointerId);drag={x:e.offsetX,y:e.offsetY,seen:new Set(),before:structuredClone(setup().cuts),changed:false};};
-car.onpointermove=e=>{if(!drag)return;let x=e.offsetX,y=e.offsetY,dx=x-drag.x,dy=y-drag.y;if(mode==='orbit'){renderer.turn(dx,dy);$('view').value='Free orbit';}else{const steps=Math.ceil(Math.hypot(dx,dy)/4);for(let i=1;i<=steps;i++)if(cut(drag.x+i*dx/steps,drag.y+i*dy/steps))drag.changed=true;}
- drag.x=x;drag.y=y;renderer.draw(setup());};
-car.onpointerup=car.onpointercancel=()=>{if(!drag)return;if(drag.changed){history.push(drag.before);if(history.length>60)history.shift();save();message('Mirrored shaving removed.');}else if(mode==='chisel')message('Drag across the '+parts[part].toLowerCase()+' to remove a shaving.');drag=null;refresh();};
+car.onpointerleave=()=>{if(!drag&&hover){hover=null;drawCar();}};
+car.onpointermove=e=>{
+ if(mode==='chisel'){
+  const h=renderer.pick(e.offsetX,e.offsetY),next=h?.p===part?h:null;
+  const changed=hover?.p!==next?.p||hover?.i!==next?.i||hover?.j!==next?.j;
+  hover=next;
+  if(!drag&&changed)drawCar();
+ }
+ if(!drag)return;let x=e.offsetX,y=e.offsetY,dx=x-drag.x,dy=y-drag.y;if(mode==='orbit'){renderer.turn(dx,dy);$('view').value='Free orbit';}else{const steps=Math.ceil(Math.hypot(dx,dy)/4);for(let i=1;i<=steps;i++)if(cut(drag.x+i*dx/steps,drag.y+i*dy/steps))drag.changed=true;}
+ drag.x=x;drag.y=y;drawCar();if(drag.changed)updateAero();};
+car.onpointerup=car.onpointercancel=()=>{if(!drag)return;if(drag.changed){history.push(drag.before);if(history.length>60)history.shift();save();message('Mirrored shaving removed.');}else if(mode==='chisel')message('Drag across the '+parts[part].toLowerCase()+' to remove a shaving.');drag=null;hover=null;refresh();};
 function drawTrack(c,p,markers){const rect=c.getBoundingClientRect(),w=rect.width,h=rect.height;if(w<1||h<1)return;let dpr=Math.min(2,devicePixelRatio);c.width=w*dpr;c.height=h*dpr;let g=c.getContext('2d');g.scale(dpr,dpr);let xs=p.map(v=>v[0]),ys=p.map(v=>v[1]),minX=Math.min(...xs),maxX=Math.max(...xs),minY=Math.min(...ys),maxY=Math.max(...ys),k=.81*Math.min(w/(maxX-minX),h/(maxY-minY)),tr=([x,y])=>[(x-(minX+maxX)/2)*k+w/2,(y-(minY+maxY)/2)*k+h/2],q=p.map(tr);
  g.beginPath();q.forEach(([x,y],i)=>i?g.lineTo(x,y):g.moveTo(x,y));g.closePath();g.lineJoin='round';g.strokeStyle='#58664f';g.lineWidth=markers?Math.max(12,k*.34):2.5;g.stroke();if(!markers)return;g.lineWidth-=3;g.strokeStyle='#b5b4a0';g.stroke();g.lineWidth=1;g.setLineDash([4,8]);g.strokeStyle='#ede8d6';g.stroke();g.setLineDash([]);
  const bearing=i=>Math.atan2(q[(i+1)%q.length][1]-q[i][1],q[(i+1)%q.length][0]-q[i][0]);g.save();g.translate(...q[0]);g.rotate(bearing(0));for(let j=-3;j<3;j++)for(let i=0;i<2;i++){g.fillStyle=(i+j)%2?'#faf6e8':'#334636';g.fillRect(i*3,j*3,3,3);}g.restore();

@@ -23,7 +23,7 @@ function makeRenderer(canvas){
  face([a,b,c,d],col,col,hit);
  for(const [test,v,w,ib,jb,ic,jc] of [[i===0,a,d,i,j,i,j+1],[i===nx-1,b,c,i+1,j,i+1,j+1],[j===0,a,b,i,j,i+1,j],[j===ny-1,d,c,i,j+1,i+1,j+1]])if(test)face([v,w,pt(ic,jc,true),pt(ib,jb,true)],'#a97440','',hit);
  }}
- function draw(s){let {width:w,height:h}=fit();if(w<5)return;faces=[];hits=[];scale=Math.min(w/7.6,h/4.8);
+ function draw(s,tool){let {width:w,height:h}=fit();if(w<5)return;faces=[];hits=[];scale=Math.min(w/7.6,h/4.8);
  project=([x,y,z])=>{let xx=x*Math.cos(yaw)-y*Math.sin(yaw),yy=x*Math.sin(yaw)+y*Math.cos(yaw);return [w*.5+scale*xx,h*.61+scale*(yy*Math.sin(pitch)-z*Math.cos(pitch)),yy*Math.cos(pitch)+z*Math.sin(pitch)];};
  const shadow=project([0,0,0]);ctx.save();ctx.translate(shadow[0],shadow[1]);ctx.rotate(-.22);ctx.scale(1,.35);ctx.fillStyle='#47543826';ctx.beginPath();ctx.ellipse(0,0,scale*3.1,scale*1.85,0,0,Math.PI*2);ctx.fill();ctx.restore();
  ringBody([[-2.55,.14,.3,.17],[-.75,.49,.26,.56],[.55,.49,.25,.62],[2.22,.28,.31,.3]],['#ae7945','#bf894f','#dcae73','#c18c50','#b98348','#956738']);
@@ -33,7 +33,19 @@ function makeRenderer(canvas){
  tube(x,y,r,r,.46,['#353c34','#3a4037','#3e443b']);tube(x,y+sign*.236,r,r*.73,.018,['#282f28']);tube(x,y+sign*.252,r,r*.43,.024,['#b29260']);tube(x,y+sign*.274,r,r*.19,.027,['#535644']);}}
  for(let side of [-1,1]){carved(s,2,side);ringBody([[2.12,.04,.57,.61],[2.29,.04,.57,.61]],['#98693e']);}
  carved(s,1);carved(s,0);carved(s,3);
- faces.sort((a,b)=>a.z-b.z);for(let f of faces){ctx.beginPath();f.pts.forEach(([x,y],i)=>i?ctx.lineTo(x,y):ctx.moveTo(x,y));ctx.closePath();ctx.fillStyle=f.color;ctx.fill();if(f.edge){ctx.strokeStyle=f.edge;ctx.lineWidth=.6;ctx.stroke();}hits.push(f);}
+ faces.sort((a,b)=>a.z-b.z);for(let f of faces){ctx.beginPath();f.pts.forEach(([x,y],i)=>i?ctx.lineTo(x,y):ctx.moveTo(x,y));ctx.closePath();ctx.fillStyle=f.color;ctx.fill();
+ if(f.hit){
+  const {p,i,j}=f.hit,depth=s.cuts[p][i*ny+j];
+  if(depth){ctx.fillStyle='rgba(100,53,20,'+Math.min(.49,.15+.032*depth)+')';ctx.fill();}
+  if(tool?.part===p){
+   ctx.fillStyle='rgba(255,221,120,.24)';ctx.fill();
+   const h=tool.hover;
+   if(h?.p===p){
+    const dy=p===2?Math.abs(j-h.j):Math.min(Math.abs(j-h.j),Math.abs(ny-1-j-h.j));
+    if(Math.hypot(i-h.i,dy)<=tool.radius){ctx.fillStyle='rgba(51,100,83,.6)';ctx.fill();}
+   }
+  }
+ }if(f.edge){ctx.strokeStyle=f.edge;ctx.lineWidth=.6;ctx.stroke();}hits.push(f);}
  }
  function pick(x,y){for(let k=hits.length-1;k>=0;k--){let f=hits[k],inside=false;for(let i=0,j=f.pts.length-1;i<f.pts.length;j=i++){let a=f.pts[i],b=f.pts[j];if((a[1]>y)!=(b[1]>y)&&x<(b[0]-a[0])*(y-a[1])/(b[1]-a[1])+a[0])inside=!inside;}if(inside)return f.hit;}return null;}
  return {draw,pick,turn(dx,dy){yaw+=dx*.011;pitch=Math.max(.05,Math.min(1.57,pitch+dy*.009));},view(v){[yaw,pitch]=({Top:[0,1.57],Side:[0,.05],Front:[Math.PI/2,.12],Isometric:[-.68,.54]})[v];}};
