@@ -68,7 +68,21 @@ const cards=names.map((name,i)=>{
 });
 // Put the street and speed circuits side by side in the gallery.
 $('tracks').insertBefore(cards[14].button,cards[1].button);
+const trialCircuits=[0,14,2];
+const trialButtons=trialCircuits.map(track=>{
+ const button=document.createElement('button');
+ button.onclick=()=>selectCircuit(track);
+ $('trialTracks').append(button);
+ return button;
+});
 function showTracks(){
+ let beaten=0;
+ trialCircuits.forEach((track,index)=>{
+  const won=data[track]?.best<cards[track].stock.total;
+  if(won)beaten++;
+  trialButtons[index].textContent=(won?'✓ ':'')+names[track];
+ });
+ txt('trialScore',Math.min(beaten,2)+' / 2 beaten');
  cards.forEach(({button,points,stock},i)=>{
    drawTrack(button.querySelector('canvas'),points);
    button.querySelector('.sub').textContent=stock.length.toFixed(1)+' m · '+(data[i]?.best?'Best '+fmt(data[i].best):'Stock '+fmt(stock.total));
@@ -76,7 +90,19 @@ function showTracks(){
 }
 $('driver').value=data.name||'Guest driver';$('driver').onchange=e=>{data.name=e.target.value.trim().slice(0,20)||'Guest driver';e.target.value=data.name;save();};
 for(let i=0;i<2;i++){const wrap=document.createElement('div');wrap.className='row';const label=document.createElement('label');label.htmlFor='a'+i;label.textContent=i?'Rear':'Front';const slider=document.createElement('input');slider.type='range';slider.min=0;slider.max=18;slider.step=1;slider.id='a'+i;const out=document.createElement('output');out.id='val'+i;slider.oninput=()=>{setup().angles[i]=+slider.value;save();refresh();};wrap.append(label,slider,out);$('angles').append(wrap);}
-function refresh(){const s=setup();txt('currentTrack',names[id]);drawCar();updateAero();$('undo').disabled=!history.length;s.angles.forEach((v,i)=>{$('a'+i).value=v;txt('val'+i,v+'°');});txt('ballast',aero(s).ballast.toFixed(2)+' g');txt('stock',fmt(lap(blank(),id).total));txt('best',data[id].best?fmt(data[id].best):'—');txt('length',lap(s,id).length.toFixed(1)+' m');txt('trackNum','Circuit '+String(id+1).padStart(2,'0')+' of 20 · '+profiles[id]);drawTrack($('map'),circuit(id));}
+$('keepSetup').onclick=()=>{
+ data[id].snapshot=structuredClone(setup());
+ save();refresh();message('Comparison setup saved for '+names[id]+'.');
+};
+$('restoreSetup').onclick=()=>{
+ if(!valid(data[id].snapshot))return;
+ data[id].s=structuredClone(data[id].snapshot);
+ history=[];hover=null;save();refresh();message('Saved carving and wing angles restored.');
+};
+function refresh(){const s=setup();
+ const saved=valid(data[id].snapshot);
+ $('restoreSetup').disabled=!saved;
+ txt('keepSetup',saved?'Replace saved setup':'Save setup');txt('currentTrack',names[id]);drawCar();updateAero();$('undo').disabled=!history.length;s.angles.forEach((v,i)=>{$('a'+i).value=v;txt('val'+i,v+'°');});txt('ballast',aero(s).ballast.toFixed(2)+' g');txt('stock',fmt(lap(blank(),id).total));txt('best',data[id].best?fmt(data[id].best):'—');txt('length',lap(s,id).length.toFixed(1)+' m');txt('trackNum','Circuit '+String(id+1).padStart(2,'0')+' of 20 · '+profiles[id]);drawTrack($('map'),circuit(id));}
 function setMode(m){mode=m;for(let v of ['orbit','chisel'])$(v).classList.toggle('chosen',v===m);hover=null;car.style.cursor=m==='orbit'?'grab':knifeCursor;updateCue();drawCar();message(m==='orbit'?'Drag to rotate the car.':'Drag the chisel across the selected surface.');}
 $('orbit').onclick=()=>setMode('orbit');$('chisel').onclick=()=>setMode('chisel');$('view').onchange=e=>{renderer.view(e.target.value);drawCar();};
 $('undo').onclick=()=>{if(history.length){setup().cuts=history.pop();save();refresh();message('Last stroke undone.');}};
@@ -98,17 +124,64 @@ car.onpointermove=e=>{
 car.onpointerup=car.onpointercancel=()=>{if(!drag)return;if(drag.changed){history.push(drag.before);if(history.length>60)history.shift();save();message('Mirrored shaving removed.');}else if(mode==='chisel')message('Drag across the '+parts[part].toLowerCase()+' to remove a shaving.');drag=null;hover=null;refresh();};
 function drawTrack(c,p,markers){const rect=c.getBoundingClientRect(),w=rect.width,h=rect.height;if(w<1||h<1)return;let dpr=Math.min(2,devicePixelRatio);c.width=w*dpr;c.height=h*dpr;let g=c.getContext('2d');g.scale(dpr,dpr);let xs=p.map(v=>v[0]),ys=p.map(v=>v[1]),minX=Math.min(...xs),maxX=Math.max(...xs),minY=Math.min(...ys),maxY=Math.max(...ys),k=.81*Math.min(w/(maxX-minX),h/(maxY-minY)),tr=([x,y])=>[(x-(minX+maxX)/2)*k+w/2,(y-(minY+maxY)/2)*k+h/2],q=p.map(tr);
  g.beginPath();q.forEach(([x,y],i)=>i?g.lineTo(x,y):g.moveTo(x,y));g.closePath();g.lineJoin='round';g.strokeStyle='#58664f';g.lineWidth=markers?Math.max(12,k*.34):2.5;g.stroke();if(!markers)return;g.lineWidth-=3;g.strokeStyle='#b5b4a0';g.stroke();g.lineWidth=1;g.setLineDash([4,8]);g.strokeStyle='#ede8d6';g.stroke();g.setLineDash([]);
+ const bounds=sectorBounds(id);
+ for(let sector=0;sector<3;sector++){
+  const from=bounds[sector],end=bounds[sector+1];
+  g.beginPath();g.moveTo(...q[from]);
+  for(let i=from+1;i<=end;i++)g.lineTo(...q[i%q.length]);
+  g.strokeStyle=sectorColors[sector];g.lineWidth=3;g.stroke();
+  const [x,y]=q[Math.floor((from+end)/2)];
+  g.fillStyle=sectorColors[sector];g.fillRect(x-11,y-9,22,18);
+  g.font='bold 11px monospace';g.fillStyle='#fff';g.textAlign='center';g.fillText('S'+(sector+1),x,y+4);
+ }
  const bearing=i=>Math.atan2(q[(i+1)%q.length][1]-q[i][1],q[(i+1)%q.length][0]-q[i][0]);g.save();g.translate(...q[0]);g.rotate(bearing(0));for(let j=-3;j<3;j++)for(let i=0;i<2;i++){g.fillStyle=(i+j)%2?'#faf6e8':'#334636';g.fillRect(i*3,j*3,3,3);}g.restore();
  for(let m of markers){let i=Math.min(q.length-1,Math.floor(m.progress)),f=m.progress-i,next=q[(i+1)%q.length];g.save();g.translate(q[i][0]*(1-f)+next[0]*f,q[i][1]*(1-f)+next[1]*f);g.rotate(bearing(i));g.globalAlpha=m.ghost?.55:1;g.fillStyle=m.ghost?'#fff':'#26382d';for(let x of [-6,3])for(let y of [-6,3])g.fillRect(x,y,4,3);g.fillStyle=m.ghost?'#fff':'#c58543';g.fillRect(-7,-3,14,6);g.fillRect(6,-5,2,10);g.restore();}}
+const sectorColors=['#376b52','#965028','#485c8e'];
+const gates=new Map();
+function sectorBounds(track){
+ if(gates.has(track))return gates.get(track);
+ const route=circuit(track),bounds=[0],third=cards[track].stock.length/3;
+ let distance=0;
+ for(let i=1;i<route.length;i++){
+  distance+=Math.hypot(route[i][0]-route[i-1][0],route[i][1]-route[i-1][1]);
+  if(bounds.length<3&&distance>=third*bounds.length)bounds.push(i);
+ }
+ bounds.push(route.length);gates.set(track,bounds);return bounds;
+}
+function showReport(){
+ const options=$('reference').options;
+ for(const option of options)option.disabled=!race.references[option.value];
+ const reference=race.references[$('reference').value];
+ const bounds=sectorBounds(id),splits=$('splits');
+ splits.replaceChildren();
+ for(let i=0;i<3;i++){
+  const duration=l=>l.time[bounds[i+1]]-l.time[bounds[i]];
+  const time=duration(race.run),gap=time-duration(reference);
+  const cell=document.createElement('div');
+  cell.style.setProperty('--ink',sectorColors[i]);
+  cell.innerHTML='<small>Sector '+(i+1)+'</small><b>'+fmt(time)+'</b><output>'+
+    (Math.abs(gap)<.0005?'Even':fmt(Math.abs(gap))+(gap<0?' gained':' lost'))+'</output>';
+  splits.append(cell);
+ }
+ txt('lapBest','Personal best · '+fmt(data[id].best));
+ $('sectorReport').classList.remove('hidden');
+}
+$('reference').onchange=showReport;
 function progress(l,t){if(t>=l.total)return l.p.length;let i=0;while(l.time[i+1]<t)i++;return i+(t-l.time[i])/(l.time[i+1]-l.time[i]);}
-function renderRace(){cancelAnimationFrame(frame);if(tab!=='race')return;txt('raceName',names[id]);if(!race){drawTrack($('raceMap'),circuit(id),[]);txt('clock','0.000 s');txt('raceInfo','Ready on the grid');return;}
+function renderRace(){cancelAnimationFrame(frame);if(tab!=='race')return;txt('raceName',names[id]);if(!race){$('sectorReport').classList.add('hidden');drawTrack($('raceMap'),circuit(id),[]);txt('clock','0.000 s');txt('raceInfo','Ready on the grid');return;}
  let now=performance.now();race.elapsed=Math.min(race.run.total,race.elapsed+(now-race.last)*rate/1000);race.last=now;const t=race.elapsed,r=race.run,g=race.ghost,pos=progress(r,t),idx=Math.min(r.p.length-1,Math.floor(pos)),gt=g.time[idx]+(pos-idx)*(g.time[idx+1]-g.time[idx]),gap=t-gt;
  drawTrack($('raceMap'),r.p,[{progress:progress(g,t),ghost:true},{progress:pos}]);txt('clock',fmt(t));txt('raceInfo',(t>=r.total?'Finish':'Lap 1 / 1')+' · '+(gap>=0?'+':'')+gap.toFixed(3)+' s vs '+race.label);
- if(t<r.total){frame=requestAnimationFrame(renderRace);return;}if(!race.finished){race.finished=true;const rec=data[id];if(!rec.best||r.total<rec.best){rec.best=r.total;rec.ghost=race.s;save();}submit(race.s,id);}}
-function start(){let s=structuredClone(setup());race={s,run:lap(s,id),ghost:lap(valid(data[id].ghost)?data[id].ghost:blank(),id),label:data[id].best?'personal best':'stock',elapsed:0,last:performance.now()};switchTab('race');}
+ if(t<r.total){frame=requestAnimationFrame(renderRace);return;}if(!race.finished){race.finished=true;const rec=data[id];if(!rec.best||r.total<rec.best){rec.best=r.total;rec.ghost=race.s;}rec.previous=race.s;save();showReport();submit(race.s,id);}}
+function start(){let s=structuredClone(setup());
+ const rec=data[id],references={stock:cards[id].stock};
+ if(valid(rec.previous))references.previous=lap(rec.previous,id);
+ if(valid(rec.snapshot))references.saved=lap(rec.snapshot,id);
+ $('reference').value=references.previous?'previous':'stock';
+ $('sectorReport').classList.add('hidden');
+ race={s,references,run:lap(s,id),ghost:lap(valid(data[id].ghost)?data[id].ghost:blank(),id),label:data[id].best?'personal best':'stock',elapsed:0,last:performance.now()};switchTab('race');}
 async function submit(s,track){if(location.protocol==='file:')return;try{let res=await fetch('/api/v2/scores/'+track,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({s,name:data.name||'Guest driver'})});if(!res.ok)throw Error();}catch{if(tab==='race')$('raceInfo').textContent+=' · Online submission unavailable';}}
 async function board(){let track=id;txt('boardName',names[id]);txt('scores','Loading times…');let rows;try{const res=await fetch('/api/v2/scores/'+id);rows=await res.json();if(!Array.isArray(rows))throw Error();}catch{txt('scores','Online leaderboard unavailable. Personal best: '+(data[id].best?fmt(data[id].best):'—'));return;}if(id!==track)return;$('scores').replaceChildren();if(!rows.length)txt('scores','No recorded laps on this circuit.');rows.forEach((r,i)=>{const el=document.createElement('div');el.className='boardRow';for(let t of [i+1,r.name,fmt(r.time)]){const v=document.createElement('span');v.textContent=t;el.append(v);}$('scores').append(el);});}
-function switchTab(t){tab=t;document.querySelectorAll('header button').forEach(b=>b.classList.toggle('active',b.dataset.tab===t));for(let v of ['tracks','shop','race','board'])$(v).classList.toggle('hidden',v!==t);txt('title',({tracks:'Tracks',shop:'Carving bench',race:'Lap view',board:'Leaderboard'})[t]);if(t==='tracks')showTracks();if(t==='shop')refresh();if(t==='race'){if(race)race.last=performance.now();renderRace();}if(t==='board')board();}
+function switchTab(t){tab=t;$('trial').classList.toggle('hidden',t!=='tracks');document.querySelectorAll('header button').forEach(b=>b.classList.toggle('active',b.dataset.tab===t));for(let v of ['tracks','shop','race','board'])$(v).classList.toggle('hidden',v!==t);txt('title',({tracks:'Tracks',shop:'Carving bench',race:'Lap view',board:'Leaderboard'})[t]);if(t==='tracks')showTracks();if(t==='shop')refresh();if(t==='race'){if(race)race.last=performance.now();renderRace();}if(t==='board')board();}
 document.querySelectorAll('[data-tab],[data-go]').forEach(b=>b.onclick=()=>switchTab(b.dataset.tab||b.dataset.go));
 $('run').onclick=$('again').onclick=start;$('speed').onclick=()=>{rate=rate===1?2:1;txt('speed',rate+'× speed');};
 window.addEventListener('resize',()=>{if(tab==='tracks')showTracks();if(tab==='shop')refresh();if(tab==='race')renderRace();});setup();switchTab('tracks');

@@ -14,10 +14,12 @@
 @media(max-width:850px){.sessionBar{gap:12px}.sessionTimes{gap:10px}.workArea{grid-template-columns:minmax(0,1.25fr) minmax(265px,1fr)}.adjustments{padding:12px}.readout{padding:10px}.readoutTitle{flex-wrap:wrap}.specs{gap:8px}}
 @media(max-width:640px){.sessionBar{flex-wrap:wrap;padding:10px}.sessionTimes{order:3;width:100%;justify-content:space-between}.sessionTimes b{display:inline;margin-left:4px;font-size:12px}.circuitIdentity canvas{width:46px}.workArea{display:block}.workstation .stage{height:clamp(175px,29vh,255px);min-height:0;flex:none}.readoutTitle{margin-bottom:5px}.readoutTitle h3{font-size:18px}.gauges div{font-size:12px}.adjustments{border:0}.adjustments .parts{grid-template-columns:repeat(4,minmax(0,1fr))}.adjustments .parts button{padding:7px 3px;text-align:center}.benchFoot{flex-wrap:wrap}.benchFoot details{max-width:100%}}
 @media(max-width:640px) and (min-height:640px){.carStation{position:sticky;top:0;z-index:2}}
+
+.savedSlot,.reportTitle,.trial{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}.savedSlot{margin-top:12px;border-top:1px solid #cbd0c0;padding-top:10px}.savedSlot button,.trial button{font-size:12px;padding:5px 9px}.trial{margin-bottom:16px;border:1px solid #bcc4b0;padding:12px 16px;background:#e8edde;border-radius:7px}.trial p{font-size:13px}.trial output{font-weight:600}.trial button{margin:2px}.reportTitle h3{font:normal 20px Georgia}.splits{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:8px 0}.splits div{border-left:4px solid var(--ink);padding:5px 9px;background:#eeeee2}.splits b,.splits output{display:block}.splits small{font-size:10px}.splits output{font-size:13px}#sectorReport{margin:8px 0 12px}
 </style>
 <header><b><i>≋</i> Timber Formula</b><nav><button class="active" data-tab="tracks">Tracks</button><button data-tab="shop">Workshop</button><button data-tab="race">Lap view</button><button data-tab="board">Leaderboard</button></nav></header>
 <main><div class="heading"><h1 id="title">Tracks</h1><span class="tag">1:12 · Tabletop series</span></div>
-<section id="tracks" class="trackGrid" aria-label="Choose a circuit"></section>
+<div id="trial" class="trial"><div><strong>Three-circuit challenge</strong><p>Beat the stock car on two circuits.</p></div><div id="trialTracks"></div><output id="trialScore"></output></div><section id="tracks" class="trackGrid" aria-label="Choose a circuit"></section>
 <section id="shop" class="workstation hidden" aria-label="Car workshop">
   <div class="sessionBar">
     <div class="circuitIdentity"><canvas id="map" aria-hidden="true"></canvas><div><small id="trackNum"></small><h2 id="currentTrack"></h2></div></div>
@@ -40,12 +42,12 @@
       </fieldset>
       <fieldset><legend>Wing tilt</legend><div id="angles"></div></fieldset>
       <div class="tools"><div class="group"><button id="chisel" class="chosen"><svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><path d="M2 29l4-12 9-8 6 6-9 9z" fill="#e5ede8" stroke="#263d32" stroke-width="1.7"/><path d="M2 29l14-15-4 10z" fill="#91a59c"/><path d="M14 10l8-8q2-2 4 0l4 4q2 2 0 4l-9 8z" fill="#ce8e50" stroke="#263d32" stroke-width="1.7"/><path d="M17 9l6 6" stroke="#f3d394" stroke-width="2"/></svg> Chisel</button><button id="orbit">⟳ Orbit</button><button id="undo">↶ Undo</button></div><button id="fresh">Fresh blank</button></div>
-      <div id="status" role="status">Drag to carve. Each stroke is mirrored.</div>
+      <div class="savedSlot"><small>Comparison setup</small><div><button id="keepSetup">Save setup</button> <button id="restoreSetup">Restore setup</button></div></div><div id="status" role="status">Drag to carve. Each stroke is mirrored.</div>
     </div>
   </div>
   <div class="benchFoot"><details><summary>How drag and downforce work</summary><p>Drag costs speed on straights. Downforce helps the tyres hold faster corners. A steeper wing usually adds both, until the wing stalls and loses grip.</p></details>
     <div class="specs"><span>Race mass <b>180 g</b></span><span>Ballast <b id="ballast"></b></span><span>Motor <b>7 W</b></span></div>
   </div>
 </section>
-<section id="race" class="panel hidden"><div class="row"><h2 id="raceName"></h2><span class="mono" id="clock"></span></div><canvas class="raceCanvas" id="raceMap"></canvas><div class="tools"><span id="raceInfo"></span><div class="group"><button id="speed">1× speed</button><button id="again">Run again</button><button data-go="shop">Workshop</button></div></div></section>
+<section id="race" class="panel hidden"><div class="row"><h2 id="raceName"></h2><span class="mono" id="clock"></span></div><div id="sectorReport" class="hidden"><div class="reportTitle"><h3>Sector times</h3><label>Compare with <select id="reference"><option value="previous">Previous run</option><option value="stock">Stock car</option><option value="saved">Saved setup</option></select></label></div><div class="splits" id="splits"></div><p id="lapBest" class="sub"></p></div><canvas class="raceCanvas" id="raceMap"></canvas><div class="tools"><span id="raceInfo"></span><div class="group"><button id="speed">1× speed</button><button id="again">Run again</button><button data-go="shop">Workshop</button></div></div></section>
 <section id="board" class="panel screen hidden"><div class="row"><h2 id="boardName"></h2><label>Driver <input class="boardInput" id="driver" maxlength="20"></label></div><div id="scores"></div></section></main><script type="module">/* APP */</script></html>
