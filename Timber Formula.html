@@ -24,11 +24,11 @@ function aero(s){
  const angle=s.angles[j]+3+7*(h[nx-1]-h[0])+5*camber;
  const cl=Math.max(-.2,Math.min(angle,16)*.09-Math.max(0,angle-16)*.085);
  const rough=avg(h.slice(1).map((v,i)=>Math.abs(v-h[i])));
- load+=cl/ny;drag+=(.07+.13*cl*cl+.14*rough-.03*avg(h))/ny;
+ load+=cl/ny;drag+=(.07+.13*cl*cl+.028*Math.max(0,angle-16)+.14*rough-.03*avg(h))/ny;
  }return {load,drag};});
  const taper=s.cuts[2].slice(-4*ny).reduce((a,b)=>a+b,0)/(4*ny*12);
  const noseSlope=s.cuts[1].slice(ny).reduce((a,v,i)=>a+Math.abs(v-s.cuts[1][i]),0)/(11*ny*12);
- return {front:.0032*wings[0].load,rear:.0036*wings[1].load*(1+.17*taper-.23*cut[2]),drag:.0034+.0019*(wings[0].drag+wings[1].drag)-.00022*cut[1]-.00026*cut[2]+.00018*noseSlope,ballast:cut.reduce((a,v,i)=>a+v*[5,9,14,6][i],0)};
+ return {front:.0032*wings[0].load,rear:.0036*wings[1].load*(1+.17*taper-.23*cut[2]),drag:.0034+.025*(wings[0].drag+wings[1].drag)-.00022*cut[1]-.00026*cut[2]+.00018*noseSlope,ballast:cut.reduce((a,v,i)=>a+v*[5,9,14,6][i],0)};
 }
 function circuit(id){
  const pts=[],n=180,stretch=1.2+(id%5)*.13;
