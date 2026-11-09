@@ -35,7 +35,7 @@ car.style.cursor=knifeCursor;
 function updateCue(){
  txt('cutCue',mode==='orbit'?'Drag to rotate the car.':'Drag the knife over the gold '+parts[part].toLowerCase()+'.');
 }
-function choosePart(p){hover=null;txt('partHint',hints[p]);part=p;txt('partName',parts[p]);Array.from($('parts').children).forEach((b,i)=>b.classList.toggle('chosen',i===p));updateCue();if(tab==='shop')drawCar();}
+function choosePart(p){hover=null;txt('partHint',hints[p]);part=p;Array.from($('parts').children).forEach((b,i)=>b.classList.toggle('chosen',i===p));updateCue();if(tab==='shop')drawCar();}
 parts.forEach((p,i)=>{let b=document.createElement('button');b.textContent=p;b.onclick=()=>choosePart(i);$('parts').append(b);});choosePart(0);
 const widths=['Fine','Medium','Wide','Extra wide'];
 function updateWidth(){
