@@ -1,0 +1,1 @@
+CREATE TABLE scores (track INTEGER NOT NULL, player TEXT NOT NULL, name TEXT NOT NULL, time REAL NOT NULL, PRIMARY KEY(track,player));

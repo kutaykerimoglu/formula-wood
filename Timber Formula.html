@@ -1,0 +1,132 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Timber Formula — Workshop</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#f5f3e9;color:#263d32;font:15px 'Avenir Next',Avenir,Arial,sans-serif}button,select,input{font:inherit;color:inherit}button,select{cursor:pointer}button{border:1px solid #aab1a1;background:transparent;border-radius:5px;padding:9px 14px;font-weight:600}button:hover,select:hover{background:#e4e8d6}button:disabled{opacity:.45;cursor:default}header{height:66px;background:#273f33;color:#faf7e9;display:flex;align-items:center;gap:36px;padding:0 4vw}header b{font:italic bold 25px Georgia;white-space:nowrap}header b i{color:#e6ab5a}header nav{display:flex;height:100%}header button{border:0;color:#d7dfd0;border-radius:0;font-size:13px;padding:0 16px}header button.active{border-bottom:3px solid #e7b879;color:white}header button:hover{background:#355341}main{max-width:1460px;margin:auto;padding:28px 4vw}h1,h2,h3,p{margin:0}h1{font:normal clamp(32px,4vw,52px) Georgia;letter-spacing:-2px}h2{font:normal 26px Georgia}small,label,.tag{font:600 11px ui-monospace,monospace;letter-spacing:1px;text-transform:uppercase}.heading,.row,.tools,.panelTitle{display:flex;align-items:center;justify-content:space-between;gap:10px}.heading{margin-bottom:22px}.tag{border:1px solid #bcc3b4;border-radius:22px;padding:7px 12px}.grid{display:grid;grid-template-columns:minmax(0,2.3fr) minmax(280px,1fr);gap:18px}.bench,.panel{border:1px solid #b5b9a7;background:#faf8ef;border-radius:9px;overflow:hidden}.stage{position:relative;background:#e5e5d6;height:clamp(340px,46vh,570px);background-image:radial-gradient(#c3c7b5 1px,transparent 1px);background-size:15px 15px}.stage canvas{display:block;width:100%;height:100%;touch-action:none;cursor:crosshair}.corner{position:absolute;top:15px;left:16px;pointer-events:none}.view{position:absolute;right:12px;top:10px}select{background:#f9f7ec;border:1px solid #adb4a3;border-radius:5px;padding:7px}.tools{padding:12px 14px;flex-wrap:wrap}.group{display:flex;gap:5px;align-items:center}.chosen,.primary{background:#304d3c;color:#fff;border-color:#304d3c}.chosen:hover,.primary:hover{background:#3e6048}.panel{padding:20px}.panel+.panel{margin-top:14px}.panelTitle{margin:10px 0 15px}.trackHead{display:flex;align-items:center;gap:14px}.trackHead canvas{width:80px;height:59px;background:#e7eada;border-radius:5px}.trackHead select{max-width:100%;border:none;font:bold 20px Georgia;padding:4px 0;background:transparent}.row{padding:8px 0}.row span:last-child,.mono,output{font-family:ui-monospace,monospace}hr{border:0;border-top:1px solid #d1d3c4;margin:12px 0}.primary{width:100%;padding:13px;margin-top:12px}.parts{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}.parts button{border-radius:5px;text-align:left;padding:12px 9px}.details{margin-top:15px}.sliders{display:flex;gap:22px;flex-wrap:wrap;margin-top:12px}.sliders label{display:flex;align-items:center;gap:8px}input[type=range]{accent-color:#496b4f;width:88px}#status{font-size:13px;margin-top:10px;min-height:1em}.raceCanvas{width:100%;height:52vh;display:block;background:#e3e5d4;border-radius:6px}.hidden{display:none!important}.boardRow{display:grid;grid-template-columns:55px 1fr auto;padding:14px 4px;border-bottom:1px solid #caced0}.toolbar{display:flex;gap:10px;align-items:center;margin:12px 0}.boardInput{padding:7px;border:1px solid #aab1a1;border-radius:4px;background:#fffef6;max-width:145px}.sub{color:#63715e;font-size:13px}.screen{max-width:1000px}.panel small{color:#65725e}@media(max-width:800px){header{gap:10px;padding:0 12px}header b{font-size:20px}header button{padding:0 7px;font-size:12px}.grid{grid-template-columns:1fr}main{padding:18px 12px}.tag{font-size:9px}.parts button{font-size:12px}.tools button{padding:7px 9px}.stage{height:360px}}
+</style>
+<header><b><i>≋</i> Timber Formula</b><nav><button class="active" data-tab="shop">Workshop</button><button data-tab="race">Lap view</button><button data-tab="board">Leaderboard</button></nav></header>
+<main><div class="heading"><h1 id="title">Carving bench</h1><span class="tag">1:12 · Tabletop series</span></div>
+<section id="shop" class="grid"><div><div class="bench"><div class="stage"><canvas id="car" aria-label="Wooden formula car, drag to carve or orbit"></canvas><small class="corner">TF–01 / Maple</small><select class="view" id="view" aria-label="Camera view"><option>Isometric</option><option>Top</option><option>Side</option><option>Front</option><option disabled>Free orbit</option></select></div><div class="tools"><div class="group"><button id="chisel" class="chosen">⌁ Chisel</button><button id="orbit">⟳ Orbit</button><button id="undo">↶ Undo</button></div><button id="fresh">Fresh blank</button><small>Mirrored cuts</small></div></div>
+<div class="panel details"><small>Carving surface</small><div class="panelTitle"><h2 id="partName">Front wing</h2><label>Blade <input id="blade" type="range" min="1" max="4" value="2"></label></div><div class="parts" id="parts"></div><div id="status" role="status">Drag the chisel across the selected surface.</div></div></div>
+<aside><div class="panel"><small>Selected circuit</small><div class="trackHead"><canvas id="map"></canvas><div><select id="track" aria-label="Circuit"></select><p class="sub" id="trackNum"></p></div></div><hr><div class="row"><span>Lap distance</span><span id="length"></span></div><div class="row"><span>Stock lap</span><span id="stock"></span></div><div class="row"><span>Personal best</span><span id="best"></span></div><button id="run" class="primary">▶ &nbsp; Run lap</button></div><div class="panel"><small>Car setup</small><div class="panelTitle"><h2>Wing mounts</h2></div><div id="angles"></div><hr><div class="row"><span>Race mass</span><span>180 g</span></div><div class="row"><span>Ballast</span><span id="ballast"></span></div><div class="row"><span>Spec motor</span><span>7 W</span></div></div></aside></section>
+<section id="race" class="panel hidden"><div class="row"><h2 id="raceName"></h2><span class="mono" id="clock"></span></div><canvas class="raceCanvas" id="raceMap"></canvas><div class="tools"><span id="raceInfo"></span><div class="group"><button id="speed">1× speed</button><button id="again">Run again</button><button data-go="shop">Workshop</button></div></div></section>
+<section id="board" class="panel screen hidden"><div class="row"><h2 id="boardName"></h2><label>Driver <input class="boardInput" id="driver" maxlength="20"></label></div><div id="scores"></div></section></main><script type="module">const parts=['Front wing','Nose','Sidepods','Rear wing'];
+const names=['Maple Bend','Spool Circuit','Walnut Esses','Drafting Loop','Cedar Crest','Tinplate Ring','Pencil Mill','Oak Switchback','Bobbin Park','Beech Hollow','Plywood Sprint','Inkpot Lane','Copper Curve','Ash Valley','Ruler Straight','Birch Bowl','Sawdust Point','Threadneedle','End Grain','The Long Table'];
+const nx=12,ny=10;
+const blank=()=>({cuts:parts.map(()=>Array(nx*ny).fill(0)),angles:[6,8]});
+function valid(s){return !!s&&Array.isArray(s.angles)&&s.angles.length===2&&s.angles.every(x=>Number.isInteger(x)&&x>=0&&x<=18)&&Array.isArray(s.cuts)&&s.cuts.length===4&&s.cuts.every((a,p)=>Array.isArray(a)&&a.length===nx*ny&&a.every((x,i)=>Number.isInteger(x)&&x>=0&&x<=12&&(p===2||x===a[Math.floor(i/ny)*ny+ny-1-i%ny])));}
+function aero(s){
+ const avg=a=>a.reduce((v,n)=>v+n,0)/a.length;
+ const cut=s.cuts.map(a=>avg(a)/12);
+ const wings=[0,3].map((p,j)=>{
+ let load=0,drag=0;
+ for(let y=0;y<ny;y++){
+ const h=Array.from({length:nx},(_,x)=>s.cuts[p][x*ny+y]/12);
+ const camber=(h[0]+h[nx-1])/2-avg(h.slice(3,9));
+ const angle=s.angles[j]+3+7*(h[nx-1]-h[0])+5*camber;
+ const cl=Math.max(-.2,Math.min(angle,16)*.09-Math.max(0,angle-16)*.085);
+ const rough=avg(h.slice(1).map((v,i)=>Math.abs(v-h[i])));
+ load+=cl/ny;drag+=(.07+.13*cl*cl+.14*rough-.03*avg(h))/ny;
+ }return {load,drag};});
+ const taper=s.cuts[2].slice(-4*ny).reduce((a,b)=>a+b,0)/(4*ny*12);
+ const noseSlope=s.cuts[1].slice(ny).reduce((a,v,i)=>a+Math.abs(v-s.cuts[1][i]),0)/(11*ny*12);
+ return {front:.0032*wings[0].load,rear:.0036*wings[1].load*(1+.17*taper-.23*cut[2]),drag:.0034+.0019*(wings[0].drag+wings[1].drag)-.00022*cut[1]-.00026*cut[2]+.00018*noseSlope,ballast:cut.reduce((a,v,i)=>a+v*[5,9,14,6][i],0)};
+}
+function circuit(id){
+ const pts=[],n=180,stretch=1.2+(id%5)*.13;
+ for(let i=0;i<n;i++){const t=2*Math.PI*i/n,r=1+.19*Math.cos(3*t+id*.71)+.095*Math.sin((2+id%4)*t+.5)+.06*Math.cos(5*t+id);
+ pts.push([Math.cos(t)*r*stretch*2.6,Math.sin(t)*r*2.6]);}return pts;
+}
+function lap(s,id){
+ const p=circuit(id),n=p.length,a=aero(s),dist=p.map((v,i)=>Math.hypot(v[0]-p[(i+1)%n][0],v[1]-p[(i+1)%n][1]));
+ const v=p.map((b,i)=>{const prev=p[(i+n-1)%n],next=p[(i+1)%n],u=Math.atan2(b[1]-prev[1],b[0]-prev[0]),w=Math.atan2(next[1]-b[1],next[0]-b[0]),curv=Math.abs(Math.atan2(Math.sin(w-u),Math.cos(w-u)))/((dist[i]+dist[(i+n-1)%n])/2);
+ return Math.sqrt(9.2/Math.max(.04,curv-2*Math.min(a.front/.44,a.rear/.56)/.18));});
+ for(let k=0;k<3;k++){
+ for(let i=0;i<n;i++){const j=(i+1)%n,acc=(Math.min(1.25,7/Math.max(.1,v[i]))-a.drag*v[i]**2)/.18;v[j]=Math.min(v[j],Math.sqrt(Math.max(1,v[i]**2+2*acc*dist[i])));}
+ for(let i=n-1;i>=0;i--){const j=(i+1)%n;v[i]=Math.min(v[i],Math.sqrt(v[j]**2+2*10*dist[i]));}}
+ const time=[0];for(let i=0;i<n;i++)time.push(time[i]+2*dist[i]/(v[i]+v[(i+1)%n]));
+ return {p,v,time,total:time[n],length:dist.reduce((a,b)=>a+b)};
+}
+
+function makeRenderer(canvas){
+ let yaw=-.68,pitch=.54,faces=[],hits=[],project,scale;
+ const ctx=canvas.getContext('2d');
+ function fit(){const b=canvas.getBoundingClientRect(),d=Math.min(2,devicePixelRatio);canvas.width=Math.max(1,Math.round(b.width*d));canvas.height=Math.max(1,Math.round(b.height*d));ctx.setTransform(d,0,0,d,0,0);return b;}
+ function face(vertices,color,edge='',hit=null){const pts=vertices.map(project);faces.push({pts,color,edge,hit,z:pts.reduce((a,v)=>a+v[2],0)/pts.length});}
+ function ringBody(sections,colors){
+ const rings=sections.map(([x,w,z,h])=>[[x,-w,z],[x,-w,z+h*.6],[x,-w*.70,z+h],[x,w*.70,z+h],[x,w,z+h*.6],[x,w,z]]);
+ for(let i=0;i<rings.length-1;i++)for(let j=0;j<6;j++)face([rings[i][j],rings[i+1][j],rings[i+1][(j+1)%6],rings[i][(j+1)%6]],colors[j%colors.length]);
+ face(rings[0],colors[0]);face(rings.at(-1),colors[0]);}
+ function tube(x,y,z,r,w,colors,axis=1){
+ const n=24,pt=(t,side)=>[x+r*Math.cos(t),y+side*w/2,z+r*Math.sin(t)];
+ const rings=[-1,1].map(s=>Array.from({length:n},(_,i)=>pt(i*2*Math.PI/n,s)));
+ for(let i=0;i<n;i++)face([rings[0][i],rings[1][i],rings[1][(i+1)%n],rings[0][(i+1)%n]],colors[i%colors.length]);
+ for(let j=0;j<2;j++)face(rings[j],colors[0]);}
+ function carved(s,p,side=1){
+ const palettes=[['#ca904b','#ce9450','#ca8e48'],['#dba55e','#dfa961','#dba35d'],['#c28c4f','#c89052','#c68d4d'],['#ce995c','#d29b5d','#ce9555']];
+ function pt(i,j,bottom=false){const u=i/nx,v=2*j/ny-1,ix=Math.min(nx-1,i),iy=Math.min(ny-1,j),cut=s.cuts[p][ix*ny+iy]/12;
+ if(p===0||p===3){const rear=p===3,ang=s.angles[rear?1:0]*Math.PI/180;return [(rear?2.04:-2.9)+u*.76,v*(rear?1.13:1.38), (rear?1.16:.35)+u*Math.sin(ang)*.76+(bottom?-.14:.06*Math.sin(u*Math.PI)-cut*.115)];}
+ if(p===1)return [-2.63+1.98*u,v*(.14+.25*u)*(1-.16*cut),bottom?.37:.55+.37*u-.12*v*v-.13*cut];
+ const width=.55+.32*Math.sin(u*Math.PI)-.26*u-.18*cut;
+ return [-.88+2.55*u,side*(.40+(v+1)/2*width),bottom?.29:.63+.22*Math.sin(Math.PI*u)-.08*v-.15*cut];}
+ for(let i=0;i<nx;i++)for(let j=0;j<ny;j++){let a=pt(i,j),b=pt(i+1,j),c=pt(i+1,j+1),d=pt(i,j+1),hit={p,i,j};let col=palettes[p][(Math.floor(j/2)+Math.floor(i/7))%3];
+ face([a,b,c,d],col,col,hit);
+ for(const [test,v,w,ib,jb,ic,jc] of [[i===0,a,d,i,j,i,j+1],[i===nx-1,b,c,i+1,j,i+1,j+1],[j===0,a,b,i,j,i+1,j],[j===ny-1,d,c,i,j+1,i+1,j+1]])if(test)face([v,w,pt(ic,jc,true),pt(ib,jb,true)],'#a97440','',hit);
+ }}
+ function draw(s){let {width:w,height:h}=fit();if(w<5)return;faces=[];hits=[];scale=Math.min(w/7.6,h/4.8);
+ project=([x,y,z])=>{let xx=x*Math.cos(yaw)-y*Math.sin(yaw),yy=x*Math.sin(yaw)+y*Math.cos(yaw);return [w*.5+scale*xx,h*.61+scale*(yy*Math.sin(pitch)-z*Math.cos(pitch)),yy*Math.cos(pitch)+z*Math.sin(pitch)];};
+ const shadow=project([0,0,0]);ctx.save();ctx.translate(shadow[0],shadow[1]);ctx.rotate(-.22);ctx.scale(1,.35);ctx.fillStyle='#47543826';ctx.beginPath();ctx.ellipse(0,0,scale*3.1,scale*1.85,0,0,Math.PI*2);ctx.fill();ctx.restore();
+ ringBody([[-2.55,.14,.3,.17],[-.75,.49,.26,.56],[.55,.49,.25,.62],[2.22,.28,.31,.3]],['#ae7945','#bf894f','#dcae73','#c18c50','#b98348','#956738']);
+ ringBody([[.36,.4,.65,.23],[.71,.43,.6,.72],[1.46,.27,.54,.52],[2.18,.15,.46,.28]],['#ba8349','#d49d5c','#e6b77a','#d7a566']);
+ ringBody([[-.64,.29,.76,.07],[-.38,.36,.75,.15],[.38,.33,.78,.16],[.57,.18,.8,.09]],['#6e5137','#433d31','#34392f','#705337']);
+ for(let x of [-1.8,1.65]){tube(x,0,.45,.075,2.5,['#735638']);for(let sign of [-1,1]){let y=sign*1.15,r=x>0?.52:.46;
+ tube(x,y,r,r,.46,['#353c34','#3a4037','#3e443b']);tube(x,y+sign*.236,r,r*.73,.018,['#282f28']);tube(x,y+sign*.252,r,r*.43,.024,['#b29260']);tube(x,y+sign*.274,r,r*.19,.027,['#535644']);}}
+ for(let side of [-1,1]){carved(s,2,side);ringBody([[2.12,.04,.57,.61],[2.29,.04,.57,.61]],['#98693e']);}
+ carved(s,1);carved(s,0);carved(s,3);
+ faces.sort((a,b)=>a.z-b.z);for(let f of faces){ctx.beginPath();f.pts.forEach(([x,y],i)=>i?ctx.lineTo(x,y):ctx.moveTo(x,y));ctx.closePath();ctx.fillStyle=f.color;ctx.fill();if(f.edge){ctx.strokeStyle=f.edge;ctx.lineWidth=.6;ctx.stroke();}hits.push(f);}
+ }
+ function pick(x,y){for(let k=hits.length-1;k>=0;k--){let f=hits[k],inside=false;for(let i=0,j=f.pts.length-1;i<f.pts.length;j=i++){let a=f.pts[i],b=f.pts[j];if((a[1]>y)!=(b[1]>y)&&x<(b[0]-a[0])*(y-a[1])/(b[1]-a[1])+a[0])inside=!inside;}if(inside)return f.hit;}return null;}
+ return {draw,pick,turn(dx,dy){yaw+=dx*.011;pitch=Math.max(.05,Math.min(1.57,pitch+dy*.009));},view(v){[yaw,pitch]=({Top:[0,1.57],Side:[0,.05],Front:[Math.PI/2,.12],Isometric:[-.68,.54]})[v];}};
+}
+
+const $=id=>document.getElementById(id),txt=(id,t)=>$(id).textContent=t,fmt=t=>t.toFixed(3)+' s';
+const data=JSON.parse(localStorage.getItem('tf.workshop.1')||'{}'),save=()=>localStorage.setItem('tf.workshop.1',JSON.stringify(data));
+let id=Number(data.track)||0,part=0,mode='chisel',history=[],drag=null,tab='shop',race=null,rate=1,frame=0;
+const car=$('car'),renderer=makeRenderer(car);
+function setup(){const rec=data[id]??={};if(!valid(rec.s))rec.s=blank();return rec.s;}
+function message(t){txt('status',t);}
+function choosePart(p){part=p;txt('partName',parts[p]);Array.from($('parts').children).forEach((b,i)=>b.classList.toggle('chosen',i===p));}
+parts.forEach((p,i)=>{let b=document.createElement('button');b.textContent=p;b.onclick=()=>choosePart(i);$('parts').append(b);});choosePart(0);
+names.forEach((n,i)=>$('track').add(new Option(n,i)));$('track').value=id;
+$('driver').value=data.name||'Guest driver';$('driver').onchange=e=>{data.name=e.target.value.trim().slice(0,20)||'Guest driver';e.target.value=data.name;save();};
+for(let i=0;i<2;i++){const wrap=document.createElement('div');wrap.className='row';const label=document.createElement('label');label.htmlFor='a'+i;label.textContent=i?'Rear':'Front';const slider=document.createElement('input');slider.type='range';slider.min=0;slider.max=18;slider.step=1;slider.id='a'+i;const out=document.createElement('output');out.id='val'+i;slider.oninput=()=>{setup().angles[i]=+slider.value;save();refresh();};wrap.append(label,slider,out);$('angles').append(wrap);}
+function refresh(){const s=setup();renderer.draw(s);$('undo').disabled=!history.length;s.angles.forEach((v,i)=>{$('a'+i).value=v;txt('val'+i,v+'°');});txt('ballast',aero(s).ballast.toFixed(2)+' g');txt('stock',fmt(lap(blank(),id).total));txt('best',data[id].best?fmt(data[id].best):'—');txt('length',lap(s,id).length.toFixed(1)+' m');txt('trackNum','Circuit '+String(id+1).padStart(2,'0')+' of 20');drawTrack($('map'),circuit(id));}
+function setMode(m){mode=m;for(let v of ['orbit','chisel'])$(v).classList.toggle('chosen',v===m);car.style.cursor=m==='orbit'?'grab':'crosshair';message(m==='orbit'?'Drag to rotate the car.':'Drag the chisel across the selected surface.');}
+$('orbit').onclick=()=>setMode('orbit');$('chisel').onclick=()=>setMode('chisel');$('view').onchange=e=>{renderer.view(e.target.value);renderer.draw(setup());};
+$('undo').onclick=()=>{if(history.length){setup().cuts=history.pop();save();refresh();message('Last stroke undone.');}};
+function cut(x,y){const h=renderer.pick(x,y);if(!h||h.p!==part)return false;const r=+$('blade').value*.65,arr=setup().cuts[part];let changed=false;
+ for(let i=Math.max(0,Math.floor(h.i-r));i<=Math.min(nx-1,h.i+r);i++)for(let j=0;j<ny;j++){const d=Math.hypot(i-h.i,j-h.j);if(d>r)continue;
+ const k=i*ny+j,m=part===2?k:i*ny+ny-1-j;if(drag.seen.has(k))continue;drag.seen.add(k);drag.seen.add(m);if(arr[k]<12){arr[k]=arr[m]=Math.min(12,arr[k]+1);changed=true;}}
+ return changed;}
+car.onpointerdown=e=>{if(drag)return;car.setPointerCapture(e.pointerId);drag={x:e.offsetX,y:e.offsetY,seen:new Set(),before:structuredClone(setup().cuts),changed:false};};
+car.onpointermove=e=>{if(!drag)return;let x=e.offsetX,y=e.offsetY,dx=x-drag.x,dy=y-drag.y;if(mode==='orbit'){renderer.turn(dx,dy);$('view').value='Free orbit';}else{const steps=Math.ceil(Math.hypot(dx,dy)/4);for(let i=1;i<=steps;i++)if(cut(drag.x+i*dx/steps,drag.y+i*dy/steps))drag.changed=true;}
+ drag.x=x;drag.y=y;renderer.draw(setup());};
+car.onpointerup=car.onpointercancel=()=>{if(!drag)return;if(drag.changed){history.push(drag.before);if(history.length>60)history.shift();save();message('Mirrored shaving removed.');}else if(mode==='chisel')message('Drag across the '+parts[part].toLowerCase()+' to remove a shaving.');drag=null;refresh();};
+function drawTrack(c,p,markers){const rect=c.getBoundingClientRect(),w=rect.width,h=rect.height;if(w<1||h<1)return;let dpr=Math.min(2,devicePixelRatio);c.width=w*dpr;c.height=h*dpr;let g=c.getContext('2d');g.scale(dpr,dpr);let xs=p.map(v=>v[0]),ys=p.map(v=>v[1]),minX=Math.min(...xs),maxX=Math.max(...xs),minY=Math.min(...ys),maxY=Math.max(...ys),k=.81*Math.min(w/(maxX-minX),h/(maxY-minY)),tr=([x,y])=>[(x-(minX+maxX)/2)*k+w/2,(y-(minY+maxY)/2)*k+h/2],q=p.map(tr);
+ g.beginPath();q.forEach(([x,y],i)=>i?g.lineTo(x,y):g.moveTo(x,y));g.closePath();g.lineJoin='round';g.strokeStyle='#58664f';g.lineWidth=markers?Math.max(12,k*.34):2.5;g.stroke();if(!markers)return;g.lineWidth-=3;g.strokeStyle='#b5b4a0';g.stroke();g.lineWidth=1;g.setLineDash([4,8]);g.strokeStyle='#ede8d6';g.stroke();g.setLineDash([]);
+ const bearing=i=>Math.atan2(q[(i+1)%q.length][1]-q[i][1],q[(i+1)%q.length][0]-q[i][0]);g.save();g.translate(...q[0]);g.rotate(bearing(0));for(let j=-3;j<3;j++)for(let i=0;i<2;i++){g.fillStyle=(i+j)%2?'#faf6e8':'#334636';g.fillRect(i*3,j*3,3,3);}g.restore();
+ for(let m of markers){let i=Math.min(q.length-1,Math.floor(m.progress)),f=m.progress-i,next=q[(i+1)%q.length];g.save();g.translate(q[i][0]*(1-f)+next[0]*f,q[i][1]*(1-f)+next[1]*f);g.rotate(bearing(i));g.globalAlpha=m.ghost?.55:1;g.fillStyle=m.ghost?'#fff':'#26382d';for(let x of [-6,3])for(let y of [-6,3])g.fillRect(x,y,4,3);g.fillStyle=m.ghost?'#fff':'#c58543';g.fillRect(-7,-3,14,6);g.fillRect(6,-5,2,10);g.restore();}}
+function progress(l,t){if(t>=l.total)return l.p.length;let i=0;while(l.time[i+1]<t)i++;return i+(t-l.time[i])/(l.time[i+1]-l.time[i]);}
+function renderRace(){cancelAnimationFrame(frame);if(tab!=='race')return;txt('raceName',names[id]);if(!race){drawTrack($('raceMap'),circuit(id),[]);txt('clock','0.000 s');txt('raceInfo','Ready on the grid');return;}
+ let now=performance.now();race.elapsed=Math.min(race.run.total,race.elapsed+(now-race.last)*rate/1000);race.last=now;const t=race.elapsed,r=race.run,g=race.ghost,pos=progress(r,t),idx=Math.min(r.p.length-1,Math.floor(pos)),gt=g.time[idx]+(pos-idx)*(g.time[idx+1]-g.time[idx]),gap=t-gt;
+ drawTrack($('raceMap'),r.p,[{progress:progress(g,t),ghost:true},{progress:pos}]);txt('clock',fmt(t));txt('raceInfo',(t>=r.total?'Finish':'Lap 1 / 1')+' · '+(gap>=0?'+':'')+gap.toFixed(3)+' s vs '+race.label);
+ if(t<r.total){frame=requestAnimationFrame(renderRace);return;}if(!race.finished){race.finished=true;const rec=data[id];if(!rec.best||r.total<rec.best){rec.best=r.total;rec.ghost=race.s;save();}submit(race.s,id);}}
+function start(){let s=structuredClone(setup());race={s,run:lap(s,id),ghost:lap(valid(data[id].ghost)?data[id].ghost:blank(),id),label:data[id].best?'personal best':'stock',elapsed:0,last:performance.now()};switchTab('race');}
+async function submit(s,track){if(location.protocol==='file:')return;try{let res=await fetch('/api/scores/'+track,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({s,name:data.name||'Guest driver'})});if(!res.ok)throw Error();}catch{if(tab==='race')$('raceInfo').textContent+=' · Online submission unavailable';}}
+async function board(){let track=id;txt('boardName',names[id]);txt('scores','Loading times…');let rows;try{const res=await fetch('/api/scores/'+id);rows=await res.json();if(!Array.isArray(rows))throw Error();}catch{txt('scores','Online leaderboard unavailable. Personal best: '+(data[id].best?fmt(data[id].best):'—'));return;}if(id!==track)return;$('scores').replaceChildren();if(!rows.length)txt('scores','No recorded laps on this circuit.');rows.forEach((r,i)=>{const el=document.createElement('div');el.className='boardRow';for(let t of [i+1,r.name,fmt(r.time)]){const v=document.createElement('span');v.textContent=t;el.append(v);}$('scores').append(el);});}
+function switchTab(t){tab=t;document.querySelectorAll('header button').forEach(b=>b.classList.toggle('active',b.dataset.tab===t));for(let v of ['shop','race','board'])$(v).classList.toggle('hidden',v!==t);txt('title',({shop:'Carving bench',race:'Lap view',board:'Leaderboard'})[t]);if(t==='shop')refresh();if(t==='race'){if(race)race.last=performance.now();renderRace();}if(t==='board')board();}
+document.querySelectorAll('[data-tab],[data-go]').forEach(b=>b.onclick=()=>switchTab(b.dataset.tab||b.dataset.go));
+$('run').onclick=$('again').onclick=start;$('speed').onclick=()=>{rate=rate===1?2:1;txt('speed',rate+'× speed');};
+$('track').onchange=e=>{id=+e.target.value;data.track=id;history=[];race=null;refresh();save();message('Workshop loaded.');};
+window.addEventListener('resize',()=>{if(tab==='shop')refresh();if(tab==='race')renderRace();});refresh();
+
+$('fresh').onclick=()=>{history.push(structuredClone(setup().cuts));setup().cuts=blank().cuts;save();refresh();message('Fresh blank fitted. Undo restores the previous carving.');};
+</script></html>
