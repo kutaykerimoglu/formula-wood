@@ -11,7 +11,6 @@
 <aside><div class="panel"><small>Selected circuit</small><div class="trackHead"><canvas id="map"></canvas><div><h2 id="currentTrack"></h2><p class="sub" id="trackNum"></p></div></div><hr><div class="row"><span>Lap distance</span><span id="length"></span></div><div class="row"><span>Stock lap</span><span id="stock"></span></div><div class="row"><span>Personal best</span><span id="best"></span></div><button id="run" class="primary">▶ &nbsp; Run lap</button></div><div class="panel"><small>Car setup</small><div class="panelTitle"><h2>Wing mounts</h2></div><div id="angles"></div><hr><div class="row"><span>Race mass</span><span>180 g</span></div><div class="row"><span>Ballast</span><span id="ballast"></span></div><div class="row"><span>Spec motor</span><span>7 W</span></div></div></aside></section>
 <section id="race" class="panel hidden"><div class="row"><h2 id="raceName"></h2><span class="mono" id="clock"></span></div><canvas class="raceCanvas" id="raceMap"></canvas><div class="tools"><span id="raceInfo"></span><div class="group"><button id="speed">1× speed</button><button id="again">Run again</button><button data-go="shop">Workshop</button></div></div></section>
 <section id="board" class="panel screen hidden"><div class="row"><h2 id="boardName"></h2><label>Driver <input class="boardInput" id="driver" maxlength="20"></label></div><div id="scores"></div></section></main><script type="module">const parts=['Front wing','Nose','Sidepods','Rear wing'];
-const names=['Maple Bend','Spool Circuit','Walnut Esses','Drafting Loop','Cedar Crest','Tinplate Ring','Pencil Mill','Oak Switchback','Bobbin Park','Beech Hollow','Plywood Sprint','Inkpot Lane','Copper Curve','Ash Valley','Ruler Straight','Birch Bowl','Sawdust Point','Threadneedle','End Grain','The Long Table'];
 const nx=12,ny=10;
 const blank=()=>({cuts:parts.map(()=>Array(nx*ny).fill(0)),angles:[6,8]});
 function valid(s){return !!s&&Array.isArray(s.angles)&&s.angles.length===2&&s.angles.every(x=>Number.isInteger(x)&&x>=0&&x<=18)&&Array.isArray(s.cuts)&&s.cuts.length===4&&s.cuts.every((a,p)=>Array.isArray(a)&&a.length===nx*ny&&a.every((x,i)=>Number.isInteger(x)&&x>=0&&x<=12&&(p===2||x===a[Math.floor(i/ny)*ny+ny-1-i%ny])));}
@@ -32,10 +31,52 @@ function aero(s){
  const noseSlope=s.cuts[1].slice(ny).reduce((a,v,i)=>a+Math.abs(v-s.cuts[1][i]),0)/(11*ny*12);
  return {front:.0032*wings[0].load,rear:.0036*wings[1].load*(1+.17*taper-.23*cut[2]),drag:.0034+.025*(wings[0].drag+wings[1].drag)-.00022*cut[1]-.00026*cut[2]+.00018*noseSlope,ballast:cut.reduce((a,v,i)=>a+v*[5,9,14,6][i],0)};
 }
+// Control points are in tabletop metres. Each bend rounds off a fraction of
+// its shorter adjacent leg, leaving the rest of each straight genuinely flat.
+const layouts = [
+ ['Harbour Steps','Street circuit',.24, [[0,0],[2.8,0],[2.8,.7],[4.2,.7],[4.2,1.5],[3,1.5],[3,2.1],[4.2,2.1],[4.2,3],[1.8,3],[1.8,2.35],[.6,2.35],[.6,1.77],[2,1.77],[2,1.18],[0,1.18]]],
+ ['Spool Circuit','Twin hairpins',.45, [[0,0],[8,0],[8,1.5],[2.3,1.5],[2.3,3.5],[7,3.5],[7,4.5],[0,4.5]]],
+ ['Walnut Esses','Linked esses',.46, [[0,0],[2,0],[3,1.1],[4.3,.1],[5.6,1.2],[7,.1],[9,.6],[9,3],[6.5,3.4],[5,2.4],[3.5,3.5],[2.2,2.4],[0,3]]],
+ ['Drafting Loop','Triangular speedway',.38, [[0,0],[12,.5],[9,4.3]]],
+ ['Cedar Crest','Double apex',.36, [[0,0],[6,-.8],[8,0],[8,1.8],[6.4,2.4],[7.4,3.6],[6,4.8],[3.8,4.2],[2.8,2.5],[0,2]]],
+ ['Tinplate Ring','Short oval',.5, [[0,0],[4,0],[5.5,.8],[5.5,2],[4,2.8],[0,2.8],[-1.5,2],[-1.5,.8]]],
+ ['Pencil Mill','Industrial circuit',.22, [[0,0],[6,0],[6,1],[4.7,1],[4.7,2],[6.5,2],[6.5,4],[3.4,4],[3.4,2.8],[1.7,2.8],[1.7,4],[0,4]]],
+ ['Oak Switchback','Switchbacks',.41, [[0,0],[6,0],[6,.8],[1.2,.8],[1.2,1.7],[6,1.7],[6,2.6],[1.2,2.6],[1.2,3.6],[6.5,3.6],[6.5,4.8],[0,4.8]]],
+ ['Bobbin Park','Parkland sweepers',.48, [[0,0],[3,-1],[6,0],[8.2,2.4],[7,4.5],[4,5],[4.6,2.9],[2.4,2.1],[.6,3],[-1,1.8]]],
+ ['Beech Hollow','Keyhole',.45, [[0,0],[5,0],[5.8,-1.5],[8,-1.6],[9,0],[8,1.8],[5.8,1.8],[5,1],[0,1]]],
+ ['Plywood Sprint','Stop and go',.25, [[0,0],[9,0],[9,2],[6,2],[5.5,1.4],[4.7,1.4],[4.7,3.5],[0,3.5]]],
+ ['Inkpot Lane','Old town',.27, [[0,0],[2,-.7],[3.1,-.1],[3.7,-.7],[5,-.5],[5,1.3],[3.7,1.3],[3.7,2.5],[2.6,2.5],[2.6,3.4],[.6,3.4],[-.6,2],[.6,1.2]]],
+ ['Copper Curve','Crescent',.48, [[0,0],[2,-1.5],[5,-2],[8,-1],[9,1],[7,3.4],[5.8,3.6],[6.7,1.3],[5,.2],[3,.4],[1.2,2]]],
+ ['Ash Valley','Technical infield',.36, [[0,0],[7,0],[8,2],[7,4],[5,4],[5.5,1.7],[4,1.3],[3.4,3.2],[1.5,3.8],[-.7,2.6]]],
+ ['Ruler Straight','Drag strip loop',.46, [[0,0],[20,0],[20,2.2],[1.2,2.2],[-.8,1.7],[-.9,.7]]],
+ ['Birch Bowl','Broad oval',.49, [[0,0],[6,-1],[9,.5],[10,3],[8,5.2],[2,6],[0,4.2],[-1,2]]],
+ ['Sawdust Point','Chicane circuit',.28, [[0,0],[4,0],[4.8,.85],[5.7,0],[9,0],[9,3.5],[7,3.5],[6.4,2.7],[5.6,3.5],[0,3.5]]],
+ ['Threadneedle','Narrow esses',.4, [[0,0],[2,-.6],[3,.1],[3.7,-.7],[5,.2],[5.5,1.6],[4.1,2.3],[2.7,1.5],[2,2.4],[1.2,1.6],[0,2.1]]],
+ ['End Grain','Perimeter circuit',.26, [[0,0],[8,0],[8,2.5],[6.8,3.7],[2,3.7],[0,2.4]]],
+ ['The Long Table','Endurance circuit',.38, [[0,0],[15,0],[16.2,1.6],[15,3],[12,3],[11,2],[9.5,2],[9,4.3],[6.5,4.8],[4.5,3.2],[2,4],[0,3]]]
+];
+const names=layouts.map(layout=>layout[0]);
+const profiles=layouts.map(layout=>layout[1]);
+const paths=new Map();
+const distance=(a,b)=>Math.hypot(a[0]-b[0],a[1]-b[1]);
+const mix=(a,b,t)=>a.map((v,i)=>v+(b[i]-v)*t);
 function circuit(id){
- const pts=[],n=180,stretch=1.2+(id%5)*.13;
- for(let i=0;i<n;i++){const t=2*Math.PI*i/n,r=1+.19*Math.cos(3*t+id*.71)+.095*Math.sin((2+id%4)*t+.5)+.06*Math.cos(5*t+id);
- pts.push([Math.cos(t)*r*stretch*2.6,Math.sin(t)*r*2.6]);}return pts;
+ if(paths.has(id))return paths.get(id);
+ const [, ,round,vertices]=layouts[id],n=vertices.length;
+ const corners=vertices.map((vertex,i)=>{
+  const prev=vertices[(i+n-1)%n],next=vertices[(i+1)%n];
+  const trim=round*Math.min(distance(prev,vertex),distance(next,vertex));
+  return {vertex,entry:mix(vertex,prev,trim/distance(prev,vertex)),exit:mix(vertex,next,trim/distance(vertex,next))};
+ });
+ const points=[];
+ for(let i=0;i<n;i++){
+  const current=corners[i],next=corners[(i+1)%n];
+  const steps=Math.ceil(distance(current.exit,next.entry)/.09);
+  for(let j=0;j<steps;j++)points.push(mix(current.exit,next.entry,j/steps));
+  const bendSteps=Math.max(8,Math.ceil((distance(next.entry,next.vertex)+distance(next.vertex,next.exit))/.07));
+  for(let j=0;j<bendSteps;j++){const t=j/bendSteps;points.push(mix(mix(next.entry,next.vertex,t),mix(next.vertex,next.exit,t),t));}
+ }
+ paths.set(id,points);return points;
 }
 function lap(s,id){
  const p=circuit(id),n=p.length,a=aero(s),dist=p.map((v,i)=>Math.hypot(v[0]-p[(i+1)%n][0],v[1]-p[(i+1)%n][1]));
@@ -91,6 +132,12 @@ function makeRenderer(canvas){
 
 const $=id=>document.getElementById(id),txt=(id,t)=>$(id).textContent=t,fmt=t=>t.toFixed(3)+' s';
 const data=JSON.parse(localStorage.getItem('tf.workshop.1')||'{}'),save=()=>localStorage.setItem('tf.workshop.1',JSON.stringify(data));
+// Course revisions invalidate lap times while preserving each wooden setup.
+if(data.courseVersion!==2){
+ for(let i=0;i<names.length;i++){if(data[i]){delete data[i].best;delete data[i].ghost;}}
+ data.courseVersion=2;
+ save();
+}
 let id=Number(data.track)||0,part=0,mode='chisel',history=[],drag=null,tab='shop',race=null,rate=1,frame=0;
 const car=$('car'),renderer=makeRenderer(car);
 function setup(){const rec=data[id]??={};if(!valid(rec.s))rec.s=blank();return rec.s;}
@@ -121,11 +168,13 @@ const cards=names.map((name,i)=>{
  button.setAttribute('aria-label','Open '+name+' workshop');
  button.innerHTML='<canvas aria-hidden="true"></canvas><span class="cardBody"><small></small><strong></strong><span class="sub"></span></span>';
  button.querySelector('strong').textContent=name;
- button.querySelector('small').textContent='Circuit '+String(i+1).padStart(2,'0');
+ button.querySelector('small').textContent='Circuit '+String(i+1).padStart(2,'0')+' · '+profiles[i];
  button.onclick=()=>selectCircuit(i);
  $('tracks').append(button);
  return {button,points:circuit(i),stock:lap(blank(),i)};
 });
+// Put the street and speed circuits side by side in the gallery.
+$('tracks').insertBefore(cards[14].button,cards[1].button);
 function showTracks(){
  cards.forEach(({button,points,stock},i)=>{
    drawTrack(button.querySelector('canvas'),points);
@@ -134,7 +183,7 @@ function showTracks(){
 }
 $('driver').value=data.name||'Guest driver';$('driver').onchange=e=>{data.name=e.target.value.trim().slice(0,20)||'Guest driver';e.target.value=data.name;save();};
 for(let i=0;i<2;i++){const wrap=document.createElement('div');wrap.className='row';const label=document.createElement('label');label.htmlFor='a'+i;label.textContent=i?'Rear':'Front';const slider=document.createElement('input');slider.type='range';slider.min=0;slider.max=18;slider.step=1;slider.id='a'+i;const out=document.createElement('output');out.id='val'+i;slider.oninput=()=>{setup().angles[i]=+slider.value;save();refresh();};wrap.append(label,slider,out);$('angles').append(wrap);}
-function refresh(){const s=setup();txt('currentTrack',names[id]);renderer.draw(s);$('undo').disabled=!history.length;s.angles.forEach((v,i)=>{$('a'+i).value=v;txt('val'+i,v+'°');});txt('ballast',aero(s).ballast.toFixed(2)+' g');txt('stock',fmt(lap(blank(),id).total));txt('best',data[id].best?fmt(data[id].best):'—');txt('length',lap(s,id).length.toFixed(1)+' m');txt('trackNum','Circuit '+String(id+1).padStart(2,'0')+' of 20');drawTrack($('map'),circuit(id));}
+function refresh(){const s=setup();txt('currentTrack',names[id]);renderer.draw(s);$('undo').disabled=!history.length;s.angles.forEach((v,i)=>{$('a'+i).value=v;txt('val'+i,v+'°');});txt('ballast',aero(s).ballast.toFixed(2)+' g');txt('stock',fmt(lap(blank(),id).total));txt('best',data[id].best?fmt(data[id].best):'—');txt('length',lap(s,id).length.toFixed(1)+' m');txt('trackNum','Circuit '+String(id+1).padStart(2,'0')+' of 20 · '+profiles[id]);drawTrack($('map'),circuit(id));}
 function setMode(m){mode=m;for(let v of ['orbit','chisel'])$(v).classList.toggle('chosen',v===m);car.style.cursor=m==='orbit'?'grab':'crosshair';message(m==='orbit'?'Drag to rotate the car.':'Drag the chisel across the selected surface.');}
 $('orbit').onclick=()=>setMode('orbit');$('chisel').onclick=()=>setMode('chisel');$('view').onchange=e=>{renderer.view(e.target.value);renderer.draw(setup());};
 $('undo').onclick=()=>{if(history.length){setup().cuts=history.pop();save();refresh();message('Last stroke undone.');}};
@@ -156,8 +205,8 @@ function renderRace(){cancelAnimationFrame(frame);if(tab!=='race')return;txt('ra
  drawTrack($('raceMap'),r.p,[{progress:progress(g,t),ghost:true},{progress:pos}]);txt('clock',fmt(t));txt('raceInfo',(t>=r.total?'Finish':'Lap 1 / 1')+' · '+(gap>=0?'+':'')+gap.toFixed(3)+' s vs '+race.label);
  if(t<r.total){frame=requestAnimationFrame(renderRace);return;}if(!race.finished){race.finished=true;const rec=data[id];if(!rec.best||r.total<rec.best){rec.best=r.total;rec.ghost=race.s;save();}submit(race.s,id);}}
 function start(){let s=structuredClone(setup());race={s,run:lap(s,id),ghost:lap(valid(data[id].ghost)?data[id].ghost:blank(),id),label:data[id].best?'personal best':'stock',elapsed:0,last:performance.now()};switchTab('race');}
-async function submit(s,track){if(location.protocol==='file:')return;try{let res=await fetch('/api/scores/'+track,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({s,name:data.name||'Guest driver'})});if(!res.ok)throw Error();}catch{if(tab==='race')$('raceInfo').textContent+=' · Online submission unavailable';}}
-async function board(){let track=id;txt('boardName',names[id]);txt('scores','Loading times…');let rows;try{const res=await fetch('/api/scores/'+id);rows=await res.json();if(!Array.isArray(rows))throw Error();}catch{txt('scores','Online leaderboard unavailable. Personal best: '+(data[id].best?fmt(data[id].best):'—'));return;}if(id!==track)return;$('scores').replaceChildren();if(!rows.length)txt('scores','No recorded laps on this circuit.');rows.forEach((r,i)=>{const el=document.createElement('div');el.className='boardRow';for(let t of [i+1,r.name,fmt(r.time)]){const v=document.createElement('span');v.textContent=t;el.append(v);}$('scores').append(el);});}
+async function submit(s,track){if(location.protocol==='file:')return;try{let res=await fetch('/api/v2/scores/'+track,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({s,name:data.name||'Guest driver'})});if(!res.ok)throw Error();}catch{if(tab==='race')$('raceInfo').textContent+=' · Online submission unavailable';}}
+async function board(){let track=id;txt('boardName',names[id]);txt('scores','Loading times…');let rows;try{const res=await fetch('/api/v2/scores/'+id);rows=await res.json();if(!Array.isArray(rows))throw Error();}catch{txt('scores','Online leaderboard unavailable. Personal best: '+(data[id].best?fmt(data[id].best):'—'));return;}if(id!==track)return;$('scores').replaceChildren();if(!rows.length)txt('scores','No recorded laps on this circuit.');rows.forEach((r,i)=>{const el=document.createElement('div');el.className='boardRow';for(let t of [i+1,r.name,fmt(r.time)]){const v=document.createElement('span');v.textContent=t;el.append(v);}$('scores').append(el);});}
 function switchTab(t){tab=t;document.querySelectorAll('header button').forEach(b=>b.classList.toggle('active',b.dataset.tab===t));for(let v of ['tracks','shop','race','board'])$(v).classList.toggle('hidden',v!==t);txt('title',({tracks:'Tracks',shop:'Carving bench',race:'Lap view',board:'Leaderboard'})[t]);if(t==='tracks')showTracks();if(t==='shop')refresh();if(t==='race'){if(race)race.last=performance.now();renderRace();}if(t==='board')board();}
 document.querySelectorAll('[data-tab],[data-go]').forEach(b=>b.onclick=()=>switchTab(b.dataset.tab||b.dataset.go));
 $('run').onclick=$('again').onclick=start;$('speed').onclick=()=>{rate=rate===1?2:1;txt('speed',rate+'× speed');};
