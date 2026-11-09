@@ -6,10 +6,44 @@ function setup(){const rec=data[id]??={};if(!valid(rec.s))rec.s=blank();return r
 function message(t){txt('status',t);}
 function choosePart(p){part=p;txt('partName',parts[p]);Array.from($('parts').children).forEach((b,i)=>b.classList.toggle('chosen',i===p));}
 parts.forEach((p,i)=>{let b=document.createElement('button');b.textContent=p;b.onclick=()=>choosePart(i);$('parts').append(b);});choosePart(0);
-names.forEach((n,i)=>$('track').add(new Option(n,i)));$('track').value=id;
+const widths=['Fine','Medium','Wide','Extra wide'];
+function updateWidth(){
+ const size=Number($('blade').value);
+ txt('widthName',widths[size-1]);
+ $('blade').setAttribute('aria-valuetext',widths[size-1]);
+ $('widthSample').style.setProperty('--sample',(size*5)+'px');
+}
+$('blade').oninput=updateWidth;
+updateWidth();
+function selectCircuit(next){
+ if(id!==next){history=[];race=null;}
+ id=next;
+ data.track=id;
+ switchTab('shop');
+ save();
+ message('Drag the chisel across the selected surface.');
+ window.scrollTo(0,0);
+}
+const cards=names.map((name,i)=>{
+ const button=document.createElement('button');
+ button.className='trackCard';
+ button.setAttribute('aria-label','Open '+name+' workshop');
+ button.innerHTML='<canvas aria-hidden="true"></canvas><span class="cardBody"><small></small><strong></strong><span class="sub"></span></span>';
+ button.querySelector('strong').textContent=name;
+ button.querySelector('small').textContent='Circuit '+String(i+1).padStart(2,'0');
+ button.onclick=()=>selectCircuit(i);
+ $('tracks').append(button);
+ return {button,points:circuit(i),stock:lap(blank(),i)};
+});
+function showTracks(){
+ cards.forEach(({button,points,stock},i)=>{
+   drawTrack(button.querySelector('canvas'),points);
+   button.querySelector('.sub').textContent=stock.length.toFixed(1)+' m · '+(data[i]?.best?'Best '+fmt(data[i].best):'Stock '+fmt(stock.total));
+ });
+}
 $('driver').value=data.name||'Guest driver';$('driver').onchange=e=>{data.name=e.target.value.trim().slice(0,20)||'Guest driver';e.target.value=data.name;save();};
 for(let i=0;i<2;i++){const wrap=document.createElement('div');wrap.className='row';const label=document.createElement('label');label.htmlFor='a'+i;label.textContent=i?'Rear':'Front';const slider=document.createElement('input');slider.type='range';slider.min=0;slider.max=18;slider.step=1;slider.id='a'+i;const out=document.createElement('output');out.id='val'+i;slider.oninput=()=>{setup().angles[i]=+slider.value;save();refresh();};wrap.append(label,slider,out);$('angles').append(wrap);}
-function refresh(){const s=setup();renderer.draw(s);$('undo').disabled=!history.length;s.angles.forEach((v,i)=>{$('a'+i).value=v;txt('val'+i,v+'°');});txt('ballast',aero(s).ballast.toFixed(2)+' g');txt('stock',fmt(lap(blank(),id).total));txt('best',data[id].best?fmt(data[id].best):'—');txt('length',lap(s,id).length.toFixed(1)+' m');txt('trackNum','Circuit '+String(id+1).padStart(2,'0')+' of 20');drawTrack($('map'),circuit(id));}
+function refresh(){const s=setup();txt('currentTrack',names[id]);renderer.draw(s);$('undo').disabled=!history.length;s.angles.forEach((v,i)=>{$('a'+i).value=v;txt('val'+i,v+'°');});txt('ballast',aero(s).ballast.toFixed(2)+' g');txt('stock',fmt(lap(blank(),id).total));txt('best',data[id].best?fmt(data[id].best):'—');txt('length',lap(s,id).length.toFixed(1)+' m');txt('trackNum','Circuit '+String(id+1).padStart(2,'0')+' of 20');drawTrack($('map'),circuit(id));}
 function setMode(m){mode=m;for(let v of ['orbit','chisel'])$(v).classList.toggle('chosen',v===m);car.style.cursor=m==='orbit'?'grab':'crosshair';message(m==='orbit'?'Drag to rotate the car.':'Drag the chisel across the selected surface.');}
 $('orbit').onclick=()=>setMode('orbit');$('chisel').onclick=()=>setMode('chisel');$('view').onchange=e=>{renderer.view(e.target.value);renderer.draw(setup());};
 $('undo').onclick=()=>{if(history.length){setup().cuts=history.pop();save();refresh();message('Last stroke undone.');}};
@@ -33,10 +67,9 @@ function renderRace(){cancelAnimationFrame(frame);if(tab!=='race')return;txt('ra
 function start(){let s=structuredClone(setup());race={s,run:lap(s,id),ghost:lap(valid(data[id].ghost)?data[id].ghost:blank(),id),label:data[id].best?'personal best':'stock',elapsed:0,last:performance.now()};switchTab('race');}
 async function submit(s,track){if(location.protocol==='file:')return;try{let res=await fetch('/api/scores/'+track,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({s,name:data.name||'Guest driver'})});if(!res.ok)throw Error();}catch{if(tab==='race')$('raceInfo').textContent+=' · Online submission unavailable';}}
 async function board(){let track=id;txt('boardName',names[id]);txt('scores','Loading times…');let rows;try{const res=await fetch('/api/scores/'+id);rows=await res.json();if(!Array.isArray(rows))throw Error();}catch{txt('scores','Online leaderboard unavailable. Personal best: '+(data[id].best?fmt(data[id].best):'—'));return;}if(id!==track)return;$('scores').replaceChildren();if(!rows.length)txt('scores','No recorded laps on this circuit.');rows.forEach((r,i)=>{const el=document.createElement('div');el.className='boardRow';for(let t of [i+1,r.name,fmt(r.time)]){const v=document.createElement('span');v.textContent=t;el.append(v);}$('scores').append(el);});}
-function switchTab(t){tab=t;document.querySelectorAll('header button').forEach(b=>b.classList.toggle('active',b.dataset.tab===t));for(let v of ['shop','race','board'])$(v).classList.toggle('hidden',v!==t);txt('title',({shop:'Carving bench',race:'Lap view',board:'Leaderboard'})[t]);if(t==='shop')refresh();if(t==='race'){if(race)race.last=performance.now();renderRace();}if(t==='board')board();}
+function switchTab(t){tab=t;document.querySelectorAll('header button').forEach(b=>b.classList.toggle('active',b.dataset.tab===t));for(let v of ['tracks','shop','race','board'])$(v).classList.toggle('hidden',v!==t);txt('title',({tracks:'Tracks',shop:'Carving bench',race:'Lap view',board:'Leaderboard'})[t]);if(t==='tracks')showTracks();if(t==='shop')refresh();if(t==='race'){if(race)race.last=performance.now();renderRace();}if(t==='board')board();}
 document.querySelectorAll('[data-tab],[data-go]').forEach(b=>b.onclick=()=>switchTab(b.dataset.tab||b.dataset.go));
 $('run').onclick=$('again').onclick=start;$('speed').onclick=()=>{rate=rate===1?2:1;txt('speed',rate+'× speed');};
-$('track').onchange=e=>{id=+e.target.value;data.track=id;history=[];race=null;refresh();save();message('Workshop loaded.');};
-window.addEventListener('resize',()=>{if(tab==='shop')refresh();if(tab==='race')renderRace();});refresh();
+window.addEventListener('resize',()=>{if(tab==='tracks')showTracks();if(tab==='shop')refresh();if(tab==='race')renderRace();});setup();switchTab('tracks');
 
 $('fresh').onclick=()=>{history.push(structuredClone(setup().cuts));setup().cuts=blank().cuts;save();refresh();message('Fresh blank fitted. Undo restores the previous carving.');};
