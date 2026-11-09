@@ -16,6 +16,7 @@
 @media(max-width:640px) and (min-height:640px){.carStation{position:sticky;top:0;z-index:2}}
 
 .savedSlot,.reportTitle,.trial{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}.savedSlot{margin-top:12px;border-top:1px solid #cbd0c0;padding-top:10px}.savedSlot button,.trial button{font-size:12px;padding:5px 9px}.trial{margin-bottom:16px;border:1px solid #bcc4b0;padding:12px 16px;background:#e8edde;border-radius:7px}.trial p{font-size:13px}.trial output{font-weight:600}.trial button{margin:2px}.reportTitle h3{font:normal 20px Georgia}.splits{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:8px 0}.splits div{border-left:4px solid var(--ink);padding:5px 9px;background:#eeeee2}.splits b,.splits output{display:block}.splits small{font-size:10px}.splits output{font-size:13px}#sectorReport{margin:8px 0 12px}
+.setupOption,.pressurePair,.pressurePair label{display:flex;align-items:center;justify-content:space-between;gap:8px}.setupOption,.pressurePair{margin:4px 0 7px}.pressurePair{flex-wrap:wrap}.setupOption select,.pressurePair select{font:13px Arial;text-transform:none;letter-spacing:normal}.workstation .workArea{align-items:start}.workstation .carStation{position:sticky;top:0}.workstation .stage{flex:none;height:clamp(265px,50vh,570px)}@media(max-width:640px){.workstation .stage{height:clamp(170px,27vh,245px);min-height:0}.workstation .carStation{position:static}}@media(max-width:640px) and (min-height:640px){.workstation .carStation{position:sticky}}
 </style>
 <header><b><i>≋</i> Timber Formula</b><nav><button class="active" data-tab="tracks">Tracks</button><button data-tab="shop">Workshop</button><button data-tab="race">Lap view</button><button data-tab="board">Leaderboard</button></nav></header>
 <main><div class="heading"><h1 id="title">Tracks</h1><span class="tag">1:12 · Tabletop series</span></div>
@@ -28,7 +29,7 @@
   </div>
   <div class="workArea">
     <div class="carStation">
-      <div class="stage"><canvas id="car" aria-label="Wooden formula car, drag to carve or orbit"></canvas><span class="cutCallout" id="cutCue"></span><small class="corner">TF–01 / Maple</small><select class="view" id="view" aria-label="Camera view"><option>Isometric</option><option>Top</option><option>Side</option><option>Front</option><option disabled>Free orbit</option></select></div>
+      <div class="stage"><canvas id="car" aria-label="Wooden formula car, drag to carve or orbit"></canvas><span class="cutCallout" id="cutCue"></span><small class="corner">TF–01 / Maple</small><select class="view" id="view" aria-label="Camera view"><option>Isometric</option><option>Top</option><option>Side</option><option>Underside</option><option>Front</option><option disabled>Free orbit</option></select></div>
       <div class="readout"><div class="readoutTitle"><h3>Aero balance</h3><small>vs stock · same speed</small></div>
         <div class="gauges"><div>Drag<output id="dragDelta"></output></div><div>Front downforce<output id="frontDelta"></output></div><div>Rear downforce<output id="rearDelta"></output></div></div>
       </div>
@@ -41,6 +42,8 @@
         <p class="sub" id="widthHelp">Width sets the breadth of each shaving.</p>
       </fieldset>
       <fieldset><legend>Wing tilt</legend><div id="angles"></div></fieldset>
+      <fieldset><legend>Aero fittings</legend><div class="setupOption"><label for="mount">Front wing height</label><select id="mount"><option value="0">Low</option><option value="1">Middle</option><option value="2">High</option></select></div><label class="setupOption">Rear Gurney flap <input id="lip" type="checkbox"></label><p class="sub">Clearance changes front grip. The rear lip adds load and drag.</p></fieldset>
+      <fieldset><legend>Warm tyre pressures</legend><div class="pressurePair"><label>Front <select id="pressure0"><option value="0">Low</option><option value="1">Standard</option><option value="2">High</option></select></label><label>Rear <select id="pressure1"><option value="0">Low</option><option value="1">Standard</option><option value="2">High</option></select></label></div><p class="sub">Softer tyres roll less freely. Corner grip depends on how much load each axle carries.</p></fieldset>
       <div class="tools"><div class="group"><button id="chisel" class="chosen"><svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><path d="M2 29l4-12 9-8 6 6-9 9z" fill="#e5ede8" stroke="#263d32" stroke-width="1.7"/><path d="M2 29l14-15-4 10z" fill="#91a59c"/><path d="M14 10l8-8q2-2 4 0l4 4q2 2 0 4l-9 8z" fill="#ce8e50" stroke="#263d32" stroke-width="1.7"/><path d="M17 9l6 6" stroke="#f3d394" stroke-width="2"/></svg> Chisel</button><button id="orbit">⟳ Orbit</button><button id="undo">↶ Undo</button></div><button id="fresh">Fresh blank</button></div>
       <div class="savedSlot"><small>Comparison setup</small><div><button id="keepSetup">Save setup</button> <button id="restoreSetup">Restore setup</button></div></div><div id="status" role="status">Drag to carve. Each stroke is mirrored.</div>
     </div>

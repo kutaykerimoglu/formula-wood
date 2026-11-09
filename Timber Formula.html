@@ -16,6 +16,7 @@
 @media(max-width:640px) and (min-height:640px){.carStation{position:sticky;top:0;z-index:2}}
 
 .savedSlot,.reportTitle,.trial{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}.savedSlot{margin-top:12px;border-top:1px solid #cbd0c0;padding-top:10px}.savedSlot button,.trial button{font-size:12px;padding:5px 9px}.trial{margin-bottom:16px;border:1px solid #bcc4b0;padding:12px 16px;background:#e8edde;border-radius:7px}.trial p{font-size:13px}.trial output{font-weight:600}.trial button{margin:2px}.reportTitle h3{font:normal 20px Georgia}.splits{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:8px 0}.splits div{border-left:4px solid var(--ink);padding:5px 9px;background:#eeeee2}.splits b,.splits output{display:block}.splits small{font-size:10px}.splits output{font-size:13px}#sectorReport{margin:8px 0 12px}
+.setupOption,.pressurePair,.pressurePair label{display:flex;align-items:center;justify-content:space-between;gap:8px}.setupOption,.pressurePair{margin:4px 0 7px}.pressurePair{flex-wrap:wrap}.setupOption select,.pressurePair select{font:13px Arial;text-transform:none;letter-spacing:normal}.workstation .workArea{align-items:start}.workstation .carStation{position:sticky;top:0}.workstation .stage{flex:none;height:clamp(265px,50vh,570px)}@media(max-width:640px){.workstation .stage{height:clamp(170px,27vh,245px);min-height:0}.workstation .carStation{position:static}}@media(max-width:640px) and (min-height:640px){.workstation .carStation{position:sticky}}
 </style>
 <header><b><i>≋</i> Timber Formula</b><nav><button class="active" data-tab="tracks">Tracks</button><button data-tab="shop">Workshop</button><button data-tab="race">Lap view</button><button data-tab="board">Leaderboard</button></nav></header>
 <main><div class="heading"><h1 id="title">Tracks</h1><span class="tag">1:12 · Tabletop series</span></div>
@@ -28,7 +29,7 @@
   </div>
   <div class="workArea">
     <div class="carStation">
-      <div class="stage"><canvas id="car" aria-label="Wooden formula car, drag to carve or orbit"></canvas><span class="cutCallout" id="cutCue"></span><small class="corner">TF–01 / Maple</small><select class="view" id="view" aria-label="Camera view"><option>Isometric</option><option>Top</option><option>Side</option><option>Front</option><option disabled>Free orbit</option></select></div>
+      <div class="stage"><canvas id="car" aria-label="Wooden formula car, drag to carve or orbit"></canvas><span class="cutCallout" id="cutCue"></span><small class="corner">TF–01 / Maple</small><select class="view" id="view" aria-label="Camera view"><option>Isometric</option><option>Top</option><option>Side</option><option>Underside</option><option>Front</option><option disabled>Free orbit</option></select></div>
       <div class="readout"><div class="readoutTitle"><h3>Aero balance</h3><small>vs stock · same speed</small></div>
         <div class="gauges"><div>Drag<output id="dragDelta"></output></div><div>Front downforce<output id="frontDelta"></output></div><div>Rear downforce<output id="rearDelta"></output></div></div>
       </div>
@@ -41,6 +42,8 @@
         <p class="sub" id="widthHelp">Width sets the breadth of each shaving.</p>
       </fieldset>
       <fieldset><legend>Wing tilt</legend><div id="angles"></div></fieldset>
+      <fieldset><legend>Aero fittings</legend><div class="setupOption"><label for="mount">Front wing height</label><select id="mount"><option value="0">Low</option><option value="1">Middle</option><option value="2">High</option></select></div><label class="setupOption">Rear Gurney flap <input id="lip" type="checkbox"></label><p class="sub">Clearance changes front grip. The rear lip adds load and drag.</p></fieldset>
+      <fieldset><legend>Warm tyre pressures</legend><div class="pressurePair"><label>Front <select id="pressure0"><option value="0">Low</option><option value="1">Standard</option><option value="2">High</option></select></label><label>Rear <select id="pressure1"><option value="0">Low</option><option value="1">Standard</option><option value="2">High</option></select></label></div><p class="sub">Softer tyres roll less freely. Corner grip depends on how much load each axle carries.</p></fieldset>
       <div class="tools"><div class="group"><button id="chisel" class="chosen"><svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><path d="M2 29l4-12 9-8 6 6-9 9z" fill="#e5ede8" stroke="#263d32" stroke-width="1.7"/><path d="M2 29l14-15-4 10z" fill="#91a59c"/><path d="M14 10l8-8q2-2 4 0l4 4q2 2 0 4l-9 8z" fill="#ce8e50" stroke="#263d32" stroke-width="1.7"/><path d="M17 9l6 6" stroke="#f3d394" stroke-width="2"/></svg> Chisel</button><button id="orbit">⟳ Orbit</button><button id="undo">↶ Undo</button></div><button id="fresh">Fresh blank</button></div>
       <div class="savedSlot"><small>Comparison setup</small><div><button id="keepSetup">Save setup</button> <button id="restoreSetup">Restore setup</button></div></div><div id="status" role="status">Drag to carve. Each stroke is mirrored.</div>
     </div>
@@ -50,26 +53,50 @@
   </div>
 </section>
 <section id="race" class="panel hidden"><div class="row"><h2 id="raceName"></h2><span class="mono" id="clock"></span></div><div id="sectorReport" class="hidden"><div class="reportTitle"><h3>Sector times</h3><label>Compare with <select id="reference"><option value="previous">Previous run</option><option value="stock">Stock car</option><option value="saved">Saved setup</option></select></label></div><div class="splits" id="splits"></div><p id="lapBest" class="sub"></p></div><canvas class="raceCanvas" id="raceMap"></canvas><div class="tools"><span id="raceInfo"></span><div class="group"><button id="speed">1× speed</button><button id="again">Run again</button><button data-go="shop">Workshop</button></div></div></section>
-<section id="board" class="panel screen hidden"><div class="row"><h2 id="boardName"></h2><label>Driver <input class="boardInput" id="driver" maxlength="20"></label></div><div id="scores"></div></section></main><script type="module">const parts=['Front wing','Nose','Sidepods','Rear wing'];
+<section id="board" class="panel screen hidden"><div class="row"><h2 id="boardName"></h2><label>Driver <input class="boardInput" id="driver" maxlength="20"></label></div><div id="scores"></div></section></main><script type="module">const parts=['Front wing','Nose','Sidepods','Rear wing','Diffuser'];
 const nx=12,ny=10;
-const blank=()=>({cuts:parts.map(()=>Array(nx*ny).fill(0)),angles:[6,8]});
-function valid(s){return !!s&&Array.isArray(s.angles)&&s.angles.length===2&&s.angles.every(x=>Number.isInteger(x)&&x>=0&&x<=18)&&Array.isArray(s.cuts)&&s.cuts.length===4&&s.cuts.every((a,p)=>Array.isArray(a)&&a.length===nx*ny&&a.every((x,i)=>Number.isInteger(x)&&x>=0&&x<=12&&(p===2||x===a[Math.floor(i/ny)*ny+ny-1-i%ny])));}
+const blank=()=>({cuts:parts.map(()=>Array(nx*ny).fill(0)),angles:[6,8],pressure:[1,1],height:1,gurney:false});
+function valid(s){return !!s&&Array.isArray(s.angles)&&s.angles.length===2&&s.angles.every(x=>Number.isInteger(x)&&x>=0&&x<=18)&&Array.isArray(s.cuts)&&s.cuts.length===parts.length&&Array.isArray(s.pressure)&&s.pressure.length===2&&s.pressure.every(level)&&level(s.height)&&typeof s.gurney==="boolean"&&s.cuts.every((a,p)=>Array.isArray(a)&&a.length===nx*ny&&a.every((x,i)=>Number.isInteger(x)&&x>=0&&x<=12&&(p===2||x===a[Math.floor(i/ny)*ny+ny-1-i%ny])));}
+function level(value){return Number.isInteger(value)&&value>=0&&value<=2;}
+
+// Tip cuts shorten the local span at each chord station, allowing a tapered outline.
+function spanFraction(setup,wing,station){
+ const row=station*ny,depth=setup.cuts[wing];
+ return 1-.34*(.7*depth[row]+.3*depth[row+1])/12;
+}
 function aero(s){
  const avg=a=>a.reduce((v,n)=>v+n,0)/a.length;
  const cut=s.cuts.map(a=>avg(a)/12);
  const wings=[0,3].map((p,j)=>{
- let load=0,drag=0;
+ let load=0,drag=0;const sectionLoads=[];
  for(let y=0;y<ny;y++){
  const h=Array.from({length:nx},(_,x)=>s.cuts[p][x*ny+y]/12);
  const camber=(h[0]+h[nx-1])/2-avg(h.slice(3,9));
  const angle=s.angles[j]+3+7*(h[nx-1]-h[0])+5*camber;
  const cl=Math.max(-.2,Math.min(angle,16)*.09-Math.max(0,angle-16)*.085);
  const rough=avg(h.slice(1).map((v,i)=>Math.abs(v-h[i])));
- load+=cl/ny;drag+=(.07+.13*cl*cl+.028*Math.max(0,angle-16)+.14*rough-.03*avg(h))/ny;
- }return {load,drag};});
+ sectionLoads.push(cl);load+=cl/ny;drag+=(.07+.13*cl*cl+.028*Math.max(0,angle-16)+.14*rough-.03*avg(h))/ny;
+ }
+ const span=avg(Array.from({length:nx},(_,i)=>spanFraction(s,p,i)));
+ const lip=j===1&&s.gurney;
+ const heightGain=j===0?[.92,1.09,1][s.height]:1;
+ const sectionLoad=load*heightGain+(lip ? .17 : 0);
+ // Profile drag scales with area. Induced drag scales with load squared / span squared.
+ const profile=drag-.13*avg(sectionLoads.map(value=>value**2));
+ return {load:span*sectionLoad,drag:span*profile+.13*sectionLoad**2+(lip ? .026 : 0)};
+});
  const taper=s.cuts[2].slice(-4*ny).reduce((a,b)=>a+b,0)/(4*ny*12);
  const noseSlope=s.cuts[1].slice(ny).reduce((a,v,i)=>a+Math.abs(v-s.cuts[1][i]),0)/(11*ny*12);
- return {front:.0032*wings[0].load,rear:.0036*wings[1].load*(1+.17*taper-.23*cut[2]),drag:.0034+.025*(wings[0].drag+wings[1].drag)-.00022*cut[1]-.00026*cut[2]+.00018*noseSlope,ballast:cut.reduce((a,v,i)=>a+v*[5,9,14,6][i],0)};
+ // Sample the carved floor along the airflow. Sudden expansions shed load.
+ let floorLoad=0,separation=0;
+ for(let y=0;y<ny;y++){
+  const row=Array.from({length:nx},(_,x)=>s.cuts[4][x*ny+y]/12);
+  const expansion=row[nx-1]-row[0];
+  const loss=row.slice(1).reduce((sum,h,i)=>sum+Math.max(0,h-row[i]-.13)+Math.max(0,row[i]-h),0);
+  floorLoad+=Math.max(0,expansion-.85*loss)/ny;
+  separation+=loss/ny;
+ }
+ return {front:.00055*floorLoad+.0032*wings[0].load,rear:.0018*floorLoad+.0036*wings[1].load*(1+.17*taper-.23*cut[2]),drag:.0034+.00015*floorLoad+.0011*separation+.025*(wings[0].drag+wings[1].drag)-.00022*cut[1]-.00026*cut[2]+.00018*noseSlope,ballast:cut.reduce((a,v,i)=>a+v*[5,9,14,6,7][i],0)};
 }
 // Control points are in tabletop metres. Each bend rounds off a fraction of
 // its shorter adjacent leg, leaving the rest of each straight genuinely flat.
@@ -120,10 +147,25 @@ function circuit(id){
 }
 function lap(s,id){
  const p=circuit(id),n=p.length,a=aero(s),dist=p.map((v,i)=>Math.hypot(v[0]-p[(i+1)%n][0],v[1]-p[(i+1)%n][1]));
+ // Warm tyres have a fixed pressure. Their preferred setting rises with axle load.
+ const rolling=.075*(.44*(2-s.pressure[0])+.56*(2-s.pressure[1]));
+ function axleLimit(speedSquared,axle){
+  const share=axle===0?.44:.56;
+  const aeroLoad=(axle===0?a.front:a.rear)*speedSquared/(.18*share);
+  const preferred=Math.min(2,.2+3.8*aeroLoad);
+  const grip=1-.065*(s.pressure[axle]-preferred)**2;
+  return grip*(9.2+2*aeroLoad);
+ }
  const v=p.map((b,i)=>{const prev=p[(i+n-1)%n],next=p[(i+1)%n],u=Math.atan2(b[1]-prev[1],b[0]-prev[0]),w=Math.atan2(next[1]-b[1],next[0]-b[0]),curv=Math.abs(Math.atan2(Math.sin(w-u),Math.cos(w-u)))/((dist[i]+dist[(i+n-1)%n])/2);
- return Math.sqrt(9.2/Math.max(.04,curv-2*Math.min(a.front/.44,a.rear/.56)/.18));});
+ let low=0,high=12;
+ for(let step=0;step<16;step++){
+  const speed=(low+high)/2,squared=speed*speed;
+  if(curv*squared<=Math.min(axleLimit(squared,0),axleLimit(squared,1)))low=speed;
+  else high=speed;
+ }
+ return low;});
  for(let k=0;k<3;k++){
- for(let i=0;i<n;i++){const j=(i+1)%n,acc=(Math.min(1.25,7/Math.max(.1,v[i]))-a.drag*v[i]**2)/.18;v[j]=Math.min(v[j],Math.sqrt(Math.max(1,v[i]**2+2*acc*dist[i])));}
+ for(let i=0;i<n;i++){const j=(i+1)%n,acc=(Math.min(1.25,7/Math.max(.1,v[i]))-rolling-a.drag*v[i]**2)/.18;v[j]=Math.min(v[j],Math.sqrt(Math.max(1,v[i]**2+2*acc*dist[i])));}
  for(let i=n-1;i>=0;i--){const j=(i+1)%n;v[i]=Math.min(v[i],Math.sqrt(v[j]**2+2*10*dist[i]));}}
  const time=[0];for(let i=0;i<n;i++)time.push(time[i]+2*dist[i]/(v[i]+v[(i+1)%n]));
  return {p,v,time,total:time[n],length:dist.reduce((a,b)=>a+b)};
@@ -144,9 +186,10 @@ function makeRenderer(canvas){
  for(let i=0;i<n;i++)face([rings[0][i],rings[1][i],rings[1][(i+1)%n],rings[0][(i+1)%n]],colors[i%colors.length]);
  for(let j=0;j<2;j++)face(rings[j],colors[0]);}
  function carved(s,p,side=1){
- const palettes=[['#ca904b','#ce9450','#ca8e48'],['#dba55e','#dfa961','#dba35d'],['#c28c4f','#c89052','#c68d4d'],['#ce995c','#d29b5d','#ce9555']];
+ const palettes=[['#ca904b','#ce9450','#ca8e48'],['#dba55e','#dfa961','#dba35d'],['#c28c4f','#c89052','#c68d4d'],['#ce995c','#d29b5d','#ce9555'],['#ab7849','#b78350','#b17e4b']];
  function pt(i,j,bottom=false){const u=i/nx,v=2*j/ny-1,ix=Math.min(nx-1,i),iy=Math.min(ny-1,j),cut=s.cuts[p][ix*ny+iy]/12;
- if(p===0||p===3){const rear=p===3,ang=s.angles[rear?1:0]*Math.PI/180;return [(rear?2.04:-2.9)+u*.76,v*(rear?1.13:1.38), (rear?1.16:.35)+u*Math.sin(ang)*.76+(bottom?-.14:.06*Math.sin(u*Math.PI)-cut*.115)];}
+ if(p===0||p===3){const rear=p===3,ang=s.angles[rear?1:0]*Math.PI/180;return [(rear?2.04:-2.9)+u*.76,v*(rear?1.13:1.38)*spanFraction(s,p,ix), (rear?1.16:[.23,.35,.47][s.height])+u*Math.sin(ang)*.76+(bottom?-.14:.06*Math.sin(u*Math.PI)-cut*.115)];}
+ if(p===4)return [.40+u*1.8,v*.76,bottom?.27:.085+.15*cut];
  if(p===1)return [-2.63+1.98*u,v*(.14+.25*u)*(1-.16*cut),bottom?.37:.55+.37*u-.12*v*v-.13*cut];
  const width=.55+.32*Math.sin(u*Math.PI)-.26*u-.18*cut;
  return [-.88+2.55*u,side*(.40+(v+1)/2*width),bottom?.29:.63+.22*Math.sin(Math.PI*u)-.08*v-.15*cut];}
@@ -163,7 +206,15 @@ function makeRenderer(canvas){
  for(let x of [-1.8,1.65]){tube(x,0,.45,.075,2.5,['#735638']);for(let sign of [-1,1]){let y=sign*1.15,r=x>0?.52:.46;
  tube(x,y,r,r,.46,['#353c34','#3a4037','#3e443b']);tube(x,y+sign*.236,r,r*.73,.018,['#282f28']);tube(x,y+sign*.252,r,r*.43,.024,['#b29260']);tube(x,y+sign*.274,r,r*.19,.027,['#535644']);}}
  for(let side of [-1,1]){carved(s,2,side);ringBody([[2.12,.04,.57,.61],[2.29,.04,.57,.61]],['#98693e']);}
- carved(s,1);carved(s,0);carved(s,3);
+ carved(s,1);carved(s,0);carved(s,3);carved(s,4);
+ if(s.gurney){
+  const top=1.16+.76*Math.sin(s.angles[1]*Math.PI/180),width=1.13*spanFraction(s,3,nx-1);
+  for(let j=0;j<ny;j++){
+   const y=k=>width*(2*k/ny-1);
+   const z=k=>top-.115*s.cuts[3][(nx-1)*ny+Math.min(k,ny-1)]/12;
+   face([[2.8,y(j),z(j)],[2.8,y(j+1),z(j+1)],[2.8,y(j+1),z(j+1)+.09],[2.8,y(j),z(j)+.09]],'#956738');
+  }
+ }
  faces.sort((a,b)=>a.z-b.z);for(let f of faces){ctx.beginPath();f.pts.forEach(([x,y],i)=>i?ctx.lineTo(x,y):ctx.moveTo(x,y));ctx.closePath();ctx.fillStyle=f.color;ctx.fill();
  if(f.hit){
   const {p,i,j}=f.hit,depth=s.cuts[p][i*ny+j];
@@ -179,15 +230,20 @@ function makeRenderer(canvas){
  }if(f.edge){ctx.strokeStyle=f.edge;ctx.lineWidth=.6;ctx.stroke();}hits.push(f);}
  }
  function pick(x,y){for(let k=hits.length-1;k>=0;k--){let f=hits[k],inside=false;for(let i=0,j=f.pts.length-1;i<f.pts.length;j=i++){let a=f.pts[i],b=f.pts[j];if((a[1]>y)!=(b[1]>y)&&x<(b[0]-a[0])*(y-a[1])/(b[1]-a[1])+a[0])inside=!inside;}if(inside)return f.hit;}return null;}
- return {draw,pick,turn(dx,dy){yaw+=dx*.011;pitch=Math.max(.05,Math.min(1.57,pitch+dy*.009));},view(v){[yaw,pitch]=({Top:[0,1.57],Side:[0,.05],Front:[Math.PI/2,.12],Isometric:[-.68,.54]})[v];}};
+ return {draw,pick,turn(dx,dy){yaw+=dx*.011;pitch=Math.max(-1.57,Math.min(1.57,pitch+dy*.009));},view(v){[yaw,pitch]=({Underside:[0,-1.57],Top:[0,1.57],Side:[0,.05],Front:[Math.PI/2,.12],Isometric:[-.68,.54]})[v];}};
 }
 
 const $=id=>document.getElementById(id),txt=(id,t)=>$(id).textContent=t,fmt=t=>t.toFixed(3)+' s';
 const data=JSON.parse(localStorage.getItem('tf.workshop.1')||'{}'),save=()=>localStorage.setItem('tf.workshop.1',JSON.stringify(data));
 // Course revisions invalidate lap times while preserving each wooden setup.
-if(data.courseVersion!==2){
- for(let i=0;i<names.length;i++){if(data[i]){delete data[i].best;delete data[i].ghost;}}
- data.courseVersion=2;
+if(data.courseVersion!==3){
+ for(let i=0;i<names.length;i++){if(data[i]){delete data[i].best;delete data[i].ghost;delete data[i].previous;
+  for(const key of ['s','snapshot']){
+   const old=data[i][key];
+   if(!old||old.cuts?.length!==4)continue;
+   data[i][key]={...blank(),angles:old.angles,cuts:[...old.cuts,Array(nx*ny).fill(0)]};
+  }}}
+ data.courseVersion=3;
  save();
 }
 let id=Number(data.track)||0,part=0,mode='chisel',history=[],drag=null,tab='shop',race=null,rate=1,frame=0;
@@ -196,10 +252,11 @@ function setup(){const rec=data[id]??={};if(!valid(rec.s))rec.s=blank();return r
 function message(t){txt('status',t);}
 let hover=null;
 const hints=[
- 'Front wing shape changes front tyre load. A cut near the leading edge can have a different effect from one near the trailing edge.',
+ 'Shave the outer tips to narrow the front wing. Cuts along the leading or trailing edge change its profile.',
  'The nose contributes to drag. A gradual taper can lower drag, while abrupt steps can add it back.',
  'Sidepod cuts change body drag and the airflow reaching the rear wing. Watch rear downforce as you shape the tail.',
- 'Rear wing shape changes rear tyre load. Removing wood from different parts of the profile can raise or lower downforce.'
+ 'Rear wing shape changes rear tyre load. Shave the tips to reduce span, or shape the profile across the wing.',
+ 'Carve the floor progressively deeper toward the rear to form a diffuser ramp. Abrupt steps can disrupt airflow.'
 ];
 const stockAero=aero(blank());
 function updateAero(){
@@ -219,7 +276,12 @@ car.style.cursor=knifeCursor;
 function updateCue(){
  txt('cutCue',mode==='orbit'?'Drag to rotate the car.':'Drag the knife over the gold '+parts[part].toLowerCase()+'.');
 }
-function choosePart(p){hover=null;txt('partHint',hints[p]);part=p;Array.from($('parts').children).forEach((b,i)=>b.classList.toggle('chosen',i===p));updateCue();if(tab==='shop')drawCar();}
+function choosePart(p){hover=null;
+ if(p===4||$('view').value==='Underside'){
+  const view=p===4?'Underside':'Isometric';
+  $('view').value=view;renderer.view(view);
+ }
+ txt('partHint',hints[p]);part=p;Array.from($('parts').children).forEach((b,i)=>b.classList.toggle('chosen',i===p));updateCue();if(tab==='shop')drawCar();}
 parts.forEach((p,i)=>{let b=document.createElement('button');b.textContent=p;b.onclick=()=>choosePart(i);$('parts').append(b);});choosePart(0);
 const widths=['Fine','Medium','Wide','Extra wide'];
 function updateWidth(){
@@ -281,9 +343,17 @@ $('keepSetup').onclick=()=>{
 $('restoreSetup').onclick=()=>{
  if(!valid(data[id].snapshot))return;
  data[id].s=structuredClone(data[id].snapshot);
- history=[];hover=null;save();refresh();message('Saved carving and wing angles restored.');
+ history=[];hover=null;save();refresh();message('Comparison setup restored.');
 };
+for(let axle=0;axle<2;axle++){
+ const input=$('pressure'+axle);
+ input.onchange=()=>{setup().pressure[axle]=Number(input.value);save();refresh();};
+}
+$('mount').onchange=()=>{setup().height=Number($('mount').value);save();refresh();};
+$('lip').onchange=()=>{setup().gurney=$('lip').checked;save();refresh();};
 function refresh(){const s=setup();
+ s.pressure.forEach((value,axle)=>$('pressure'+axle).value=value);
+ $('mount').value=s.height;$('lip').checked=s.gurney;
  const saved=valid(data[id].snapshot);
  $('restoreSetup').disabled=!saved;
  txt('keepSetup',saved?'Replace saved setup':'Save setup');txt('currentTrack',names[id]);drawCar();updateAero();$('undo').disabled=!history.length;s.angles.forEach((v,i)=>{$('a'+i).value=v;txt('val'+i,v+'°');});txt('ballast',aero(s).ballast.toFixed(2)+' g');txt('stock',fmt(lap(blank(),id).total));txt('best',data[id].best?fmt(data[id].best):'—');txt('length',lap(s,id).length.toFixed(1)+' m');txt('trackNum','Circuit '+String(id+1).padStart(2,'0')+' of 20 · '+profiles[id]);drawTrack($('map'),circuit(id));}
@@ -363,8 +433,8 @@ function start(){let s=structuredClone(setup());
  $('reference').value=references.previous?'previous':'stock';
  $('sectorReport').classList.add('hidden');
  race={s,references,run:lap(s,id),ghost:lap(valid(data[id].ghost)?data[id].ghost:blank(),id),label:data[id].best?'personal best':'stock',elapsed:0,last:performance.now()};switchTab('race');}
-async function submit(s,track){if(location.protocol==='file:')return;try{let res=await fetch('/api/v2/scores/'+track,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({s,name:data.name||'Guest driver'})});if(!res.ok)throw Error();}catch{if(tab==='race')$('raceInfo').textContent+=' · Online submission unavailable';}}
-async function board(){let track=id;txt('boardName',names[id]);txt('scores','Loading times…');let rows;try{const res=await fetch('/api/v2/scores/'+id);rows=await res.json();if(!Array.isArray(rows))throw Error();}catch{txt('scores','Online leaderboard unavailable. Personal best: '+(data[id].best?fmt(data[id].best):'—'));return;}if(id!==track)return;$('scores').replaceChildren();if(!rows.length)txt('scores','No recorded laps on this circuit.');rows.forEach((r,i)=>{const el=document.createElement('div');el.className='boardRow';for(let t of [i+1,r.name,fmt(r.time)]){const v=document.createElement('span');v.textContent=t;el.append(v);}$('scores').append(el);});}
+async function submit(s,track){if(location.protocol==='file:')return;try{let res=await fetch('/api/v3/scores/'+track,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({s,name:data.name||'Guest driver'})});if(!res.ok)throw Error();}catch{if(tab==='race')$('raceInfo').textContent+=' · Online submission unavailable';}}
+async function board(){let track=id;txt('boardName',names[id]);txt('scores','Loading times…');let rows;try{const res=await fetch('/api/v3/scores/'+id);rows=await res.json();if(!Array.isArray(rows))throw Error();}catch{txt('scores','Online leaderboard unavailable. Personal best: '+(data[id].best?fmt(data[id].best):'—'));return;}if(id!==track)return;$('scores').replaceChildren();if(!rows.length)txt('scores','No recorded laps on this circuit.');rows.forEach((r,i)=>{const el=document.createElement('div');el.className='boardRow';for(let t of [i+1,r.name,fmt(r.time)]){const v=document.createElement('span');v.textContent=t;el.append(v);}$('scores').append(el);});}
 function switchTab(t){tab=t;$('trial').classList.toggle('hidden',t!=='tracks');document.querySelectorAll('header button').forEach(b=>b.classList.toggle('active',b.dataset.tab===t));for(let v of ['tracks','shop','race','board'])$(v).classList.toggle('hidden',v!==t);txt('title',({tracks:'Tracks',shop:'Carving bench',race:'Lap view',board:'Leaderboard'})[t]);if(t==='tracks')showTracks();if(t==='shop')refresh();if(t==='race'){if(race)race.last=performance.now();renderRace();}if(t==='board')board();}
 document.querySelectorAll('[data-tab],[data-go]').forEach(b=>b.onclick=()=>switchTab(b.dataset.tab||b.dataset.go));
 $('run').onclick=$('again').onclick=start;$('speed').onclick=()=>{rate=rate===1?2:1;txt('speed',rate+'× speed');};

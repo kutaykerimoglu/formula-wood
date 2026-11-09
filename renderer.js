@@ -13,9 +13,10 @@ function makeRenderer(canvas){
  for(let i=0;i<n;i++)face([rings[0][i],rings[1][i],rings[1][(i+1)%n],rings[0][(i+1)%n]],colors[i%colors.length]);
  for(let j=0;j<2;j++)face(rings[j],colors[0]);}
  function carved(s,p,side=1){
- const palettes=[['#ca904b','#ce9450','#ca8e48'],['#dba55e','#dfa961','#dba35d'],['#c28c4f','#c89052','#c68d4d'],['#ce995c','#d29b5d','#ce9555']];
+ const palettes=[['#ca904b','#ce9450','#ca8e48'],['#dba55e','#dfa961','#dba35d'],['#c28c4f','#c89052','#c68d4d'],['#ce995c','#d29b5d','#ce9555'],['#ab7849','#b78350','#b17e4b']];
  function pt(i,j,bottom=false){const u=i/nx,v=2*j/ny-1,ix=Math.min(nx-1,i),iy=Math.min(ny-1,j),cut=s.cuts[p][ix*ny+iy]/12;
- if(p===0||p===3){const rear=p===3,ang=s.angles[rear?1:0]*Math.PI/180;return [(rear?2.04:-2.9)+u*.76,v*(rear?1.13:1.38), (rear?1.16:.35)+u*Math.sin(ang)*.76+(bottom?-.14:.06*Math.sin(u*Math.PI)-cut*.115)];}
+ if(p===0||p===3){const rear=p===3,ang=s.angles[rear?1:0]*Math.PI/180;return [(rear?2.04:-2.9)+u*.76,v*(rear?1.13:1.38)*spanFraction(s,p,ix), (rear?1.16:[.23,.35,.47][s.height])+u*Math.sin(ang)*.76+(bottom?-.14:.06*Math.sin(u*Math.PI)-cut*.115)];}
+ if(p===4)return [.40+u*1.8,v*.76,bottom?.27:.085+.15*cut];
  if(p===1)return [-2.63+1.98*u,v*(.14+.25*u)*(1-.16*cut),bottom?.37:.55+.37*u-.12*v*v-.13*cut];
  const width=.55+.32*Math.sin(u*Math.PI)-.26*u-.18*cut;
  return [-.88+2.55*u,side*(.40+(v+1)/2*width),bottom?.29:.63+.22*Math.sin(Math.PI*u)-.08*v-.15*cut];}
@@ -32,7 +33,15 @@ function makeRenderer(canvas){
  for(let x of [-1.8,1.65]){tube(x,0,.45,.075,2.5,['#735638']);for(let sign of [-1,1]){let y=sign*1.15,r=x>0?.52:.46;
  tube(x,y,r,r,.46,['#353c34','#3a4037','#3e443b']);tube(x,y+sign*.236,r,r*.73,.018,['#282f28']);tube(x,y+sign*.252,r,r*.43,.024,['#b29260']);tube(x,y+sign*.274,r,r*.19,.027,['#535644']);}}
  for(let side of [-1,1]){carved(s,2,side);ringBody([[2.12,.04,.57,.61],[2.29,.04,.57,.61]],['#98693e']);}
- carved(s,1);carved(s,0);carved(s,3);
+ carved(s,1);carved(s,0);carved(s,3);carved(s,4);
+ if(s.gurney){
+  const top=1.16+.76*Math.sin(s.angles[1]*Math.PI/180),width=1.13*spanFraction(s,3,nx-1);
+  for(let j=0;j<ny;j++){
+   const y=k=>width*(2*k/ny-1);
+   const z=k=>top-.115*s.cuts[3][(nx-1)*ny+Math.min(k,ny-1)]/12;
+   face([[2.8,y(j),z(j)],[2.8,y(j+1),z(j+1)],[2.8,y(j+1),z(j+1)+.09],[2.8,y(j),z(j)+.09]],'#956738');
+  }
+ }
  faces.sort((a,b)=>a.z-b.z);for(let f of faces){ctx.beginPath();f.pts.forEach(([x,y],i)=>i?ctx.lineTo(x,y):ctx.moveTo(x,y));ctx.closePath();ctx.fillStyle=f.color;ctx.fill();
  if(f.hit){
   const {p,i,j}=f.hit,depth=s.cuts[p][i*ny+j];
@@ -48,5 +57,5 @@ function makeRenderer(canvas){
  }if(f.edge){ctx.strokeStyle=f.edge;ctx.lineWidth=.6;ctx.stroke();}hits.push(f);}
  }
  function pick(x,y){for(let k=hits.length-1;k>=0;k--){let f=hits[k],inside=false;for(let i=0,j=f.pts.length-1;i<f.pts.length;j=i++){let a=f.pts[i],b=f.pts[j];if((a[1]>y)!=(b[1]>y)&&x<(b[0]-a[0])*(y-a[1])/(b[1]-a[1])+a[0])inside=!inside;}if(inside)return f.hit;}return null;}
- return {draw,pick,turn(dx,dy){yaw+=dx*.011;pitch=Math.max(.05,Math.min(1.57,pitch+dy*.009));},view(v){[yaw,pitch]=({Top:[0,1.57],Side:[0,.05],Front:[Math.PI/2,.12],Isometric:[-.68,.54]})[v];}};
+ return {draw,pick,turn(dx,dy){yaw+=dx*.011;pitch=Math.max(-1.57,Math.min(1.57,pitch+dy*.009));},view(v){[yaw,pitch]=({Underside:[0,-1.57],Top:[0,1.57],Side:[0,.05],Front:[Math.PI/2,.12],Isometric:[-.68,.54]})[v];}};
 }

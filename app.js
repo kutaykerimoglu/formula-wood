@@ -1,9 +1,14 @@
 const $=id=>document.getElementById(id),txt=(id,t)=>$(id).textContent=t,fmt=t=>t.toFixed(3)+' s';
 const data=JSON.parse(localStorage.getItem('tf.workshop.1')||'{}'),save=()=>localStorage.setItem('tf.workshop.1',JSON.stringify(data));
 // Course revisions invalidate lap times while preserving each wooden setup.
-if(data.courseVersion!==2){
- for(let i=0;i<names.length;i++){if(data[i]){delete data[i].best;delete data[i].ghost;}}
- data.courseVersion=2;
+if(data.courseVersion!==3){
+ for(let i=0;i<names.length;i++){if(data[i]){delete data[i].best;delete data[i].ghost;delete data[i].previous;
+  for(const key of ['s','snapshot']){
+   const old=data[i][key];
+   if(!old||old.cuts?.length!==4)continue;
+   data[i][key]={...blank(),angles:old.angles,cuts:[...old.cuts,Array(nx*ny).fill(0)]};
+  }}}
+ data.courseVersion=3;
  save();
 }
 let id=Number(data.track)||0,part=0,mode='chisel',history=[],drag=null,tab='shop',race=null,rate=1,frame=0;
@@ -12,10 +17,11 @@ function setup(){const rec=data[id]??={};if(!valid(rec.s))rec.s=blank();return r
 function message(t){txt('status',t);}
 let hover=null;
 const hints=[
- 'Front wing shape changes front tyre load. A cut near the leading edge can have a different effect from one near the trailing edge.',
+ 'Shave the outer tips to narrow the front wing. Cuts along the leading or trailing edge change its profile.',
  'The nose contributes to drag. A gradual taper can lower drag, while abrupt steps can add it back.',
  'Sidepod cuts change body drag and the airflow reaching the rear wing. Watch rear downforce as you shape the tail.',
- 'Rear wing shape changes rear tyre load. Removing wood from different parts of the profile can raise or lower downforce.'
+ 'Rear wing shape changes rear tyre load. Shave the tips to reduce span, or shape the profile across the wing.',
+ 'Carve the floor progressively deeper toward the rear to form a diffuser ramp. Abrupt steps can disrupt airflow.'
 ];
 const stockAero=aero(blank());
 function updateAero(){
@@ -35,7 +41,12 @@ car.style.cursor=knifeCursor;
 function updateCue(){
  txt('cutCue',mode==='orbit'?'Drag to rotate the car.':'Drag the knife over the gold '+parts[part].toLowerCase()+'.');
 }
-function choosePart(p){hover=null;txt('partHint',hints[p]);part=p;Array.from($('parts').children).forEach((b,i)=>b.classList.toggle('chosen',i===p));updateCue();if(tab==='shop')drawCar();}
+function choosePart(p){hover=null;
+ if(p===4||$('view').value==='Underside'){
+  const view=p===4?'Underside':'Isometric';
+  $('view').value=view;renderer.view(view);
+ }
+ txt('partHint',hints[p]);part=p;Array.from($('parts').children).forEach((b,i)=>b.classList.toggle('chosen',i===p));updateCue();if(tab==='shop')drawCar();}
 parts.forEach((p,i)=>{let b=document.createElement('button');b.textContent=p;b.onclick=()=>choosePart(i);$('parts').append(b);});choosePart(0);
 const widths=['Fine','Medium','Wide','Extra wide'];
 function updateWidth(){
@@ -97,9 +108,17 @@ $('keepSetup').onclick=()=>{
 $('restoreSetup').onclick=()=>{
  if(!valid(data[id].snapshot))return;
  data[id].s=structuredClone(data[id].snapshot);
- history=[];hover=null;save();refresh();message('Saved carving and wing angles restored.');
+ history=[];hover=null;save();refresh();message('Comparison setup restored.');
 };
+for(let axle=0;axle<2;axle++){
+ const input=$('pressure'+axle);
+ input.onchange=()=>{setup().pressure[axle]=Number(input.value);save();refresh();};
+}
+$('mount').onchange=()=>{setup().height=Number($('mount').value);save();refresh();};
+$('lip').onchange=()=>{setup().gurney=$('lip').checked;save();refresh();};
 function refresh(){const s=setup();
+ s.pressure.forEach((value,axle)=>$('pressure'+axle).value=value);
+ $('mount').value=s.height;$('lip').checked=s.gurney;
  const saved=valid(data[id].snapshot);
  $('restoreSetup').disabled=!saved;
  txt('keepSetup',saved?'Replace saved setup':'Save setup');txt('currentTrack',names[id]);drawCar();updateAero();$('undo').disabled=!history.length;s.angles.forEach((v,i)=>{$('a'+i).value=v;txt('val'+i,v+'°');});txt('ballast',aero(s).ballast.toFixed(2)+' g');txt('stock',fmt(lap(blank(),id).total));txt('best',data[id].best?fmt(data[id].best):'—');txt('length',lap(s,id).length.toFixed(1)+' m');txt('trackNum','Circuit '+String(id+1).padStart(2,'0')+' of 20 · '+profiles[id]);drawTrack($('map'),circuit(id));}
@@ -179,8 +198,8 @@ function start(){let s=structuredClone(setup());
  $('reference').value=references.previous?'previous':'stock';
  $('sectorReport').classList.add('hidden');
  race={s,references,run:lap(s,id),ghost:lap(valid(data[id].ghost)?data[id].ghost:blank(),id),label:data[id].best?'personal best':'stock',elapsed:0,last:performance.now()};switchTab('race');}
-async function submit(s,track){if(location.protocol==='file:')return;try{let res=await fetch('/api/v2/scores/'+track,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({s,name:data.name||'Guest driver'})});if(!res.ok)throw Error();}catch{if(tab==='race')$('raceInfo').textContent+=' · Online submission unavailable';}}
-async function board(){let track=id;txt('boardName',names[id]);txt('scores','Loading times…');let rows;try{const res=await fetch('/api/v2/scores/'+id);rows=await res.json();if(!Array.isArray(rows))throw Error();}catch{txt('scores','Online leaderboard unavailable. Personal best: '+(data[id].best?fmt(data[id].best):'—'));return;}if(id!==track)return;$('scores').replaceChildren();if(!rows.length)txt('scores','No recorded laps on this circuit.');rows.forEach((r,i)=>{const el=document.createElement('div');el.className='boardRow';for(let t of [i+1,r.name,fmt(r.time)]){const v=document.createElement('span');v.textContent=t;el.append(v);}$('scores').append(el);});}
+async function submit(s,track){if(location.protocol==='file:')return;try{let res=await fetch('/api/v3/scores/'+track,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({s,name:data.name||'Guest driver'})});if(!res.ok)throw Error();}catch{if(tab==='race')$('raceInfo').textContent+=' · Online submission unavailable';}}
+async function board(){let track=id;txt('boardName',names[id]);txt('scores','Loading times…');let rows;try{const res=await fetch('/api/v3/scores/'+id);rows=await res.json();if(!Array.isArray(rows))throw Error();}catch{txt('scores','Online leaderboard unavailable. Personal best: '+(data[id].best?fmt(data[id].best):'—'));return;}if(id!==track)return;$('scores').replaceChildren();if(!rows.length)txt('scores','No recorded laps on this circuit.');rows.forEach((r,i)=>{const el=document.createElement('div');el.className='boardRow';for(let t of [i+1,r.name,fmt(r.time)]){const v=document.createElement('span');v.textContent=t;el.append(v);}$('scores').append(el);});}
 function switchTab(t){tab=t;$('trial').classList.toggle('hidden',t!=='tracks');document.querySelectorAll('header button').forEach(b=>b.classList.toggle('active',b.dataset.tab===t));for(let v of ['tracks','shop','race','board'])$(v).classList.toggle('hidden',v!==t);txt('title',({tracks:'Tracks',shop:'Carving bench',race:'Lap view',board:'Leaderboard'})[t]);if(t==='tracks')showTracks();if(t==='shop')refresh();if(t==='race'){if(race)race.last=performance.now();renderRace();}if(t==='board')board();}
 document.querySelectorAll('[data-tab],[data-go]').forEach(b=>b.onclick=()=>switchTab(b.dataset.tab||b.dataset.go));
 $('run').onclick=$('again').onclick=start;$('speed').onclick=()=>{rate=rate===1?2:1;txt('speed',rate+'× speed');};

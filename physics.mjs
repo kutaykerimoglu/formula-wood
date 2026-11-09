@@ -1,23 +1,47 @@
-export const parts=['Front wing','Nose','Sidepods','Rear wing'];
+export const parts=['Front wing','Nose','Sidepods','Rear wing','Diffuser'];
 export const nx=12,ny=10;
-export const blank=()=>({cuts:parts.map(()=>Array(nx*ny).fill(0)),angles:[6,8]});
-export function valid(s){return !!s&&Array.isArray(s.angles)&&s.angles.length===2&&s.angles.every(x=>Number.isInteger(x)&&x>=0&&x<=18)&&Array.isArray(s.cuts)&&s.cuts.length===4&&s.cuts.every((a,p)=>Array.isArray(a)&&a.length===nx*ny&&a.every((x,i)=>Number.isInteger(x)&&x>=0&&x<=12&&(p===2||x===a[Math.floor(i/ny)*ny+ny-1-i%ny])));}
+export const blank=()=>({cuts:parts.map(()=>Array(nx*ny).fill(0)),angles:[6,8],pressure:[1,1],height:1,gurney:false});
+export function valid(s){return !!s&&Array.isArray(s.angles)&&s.angles.length===2&&s.angles.every(x=>Number.isInteger(x)&&x>=0&&x<=18)&&Array.isArray(s.cuts)&&s.cuts.length===parts.length&&Array.isArray(s.pressure)&&s.pressure.length===2&&s.pressure.every(level)&&level(s.height)&&typeof s.gurney==="boolean"&&s.cuts.every((a,p)=>Array.isArray(a)&&a.length===nx*ny&&a.every((x,i)=>Number.isInteger(x)&&x>=0&&x<=12&&(p===2||x===a[Math.floor(i/ny)*ny+ny-1-i%ny])));}
+function level(value){return Number.isInteger(value)&&value>=0&&value<=2;}
+
+// Tip cuts shorten the local span at each chord station, allowing a tapered outline.
+export function spanFraction(setup,wing,station){
+ const row=station*ny,depth=setup.cuts[wing];
+ return 1-.34*(.7*depth[row]+.3*depth[row+1])/12;
+}
 export function aero(s){
  const avg=a=>a.reduce((v,n)=>v+n,0)/a.length;
  const cut=s.cuts.map(a=>avg(a)/12);
  const wings=[0,3].map((p,j)=>{
- let load=0,drag=0;
+ let load=0,drag=0;const sectionLoads=[];
  for(let y=0;y<ny;y++){
  const h=Array.from({length:nx},(_,x)=>s.cuts[p][x*ny+y]/12);
  const camber=(h[0]+h[nx-1])/2-avg(h.slice(3,9));
  const angle=s.angles[j]+3+7*(h[nx-1]-h[0])+5*camber;
  const cl=Math.max(-.2,Math.min(angle,16)*.09-Math.max(0,angle-16)*.085);
  const rough=avg(h.slice(1).map((v,i)=>Math.abs(v-h[i])));
- load+=cl/ny;drag+=(.07+.13*cl*cl+.028*Math.max(0,angle-16)+.14*rough-.03*avg(h))/ny;
- }return {load,drag};});
+ sectionLoads.push(cl);load+=cl/ny;drag+=(.07+.13*cl*cl+.028*Math.max(0,angle-16)+.14*rough-.03*avg(h))/ny;
+ }
+ const span=avg(Array.from({length:nx},(_,i)=>spanFraction(s,p,i)));
+ const lip=j===1&&s.gurney;
+ const heightGain=j===0?[.92,1.09,1][s.height]:1;
+ const sectionLoad=load*heightGain+(lip ? .17 : 0);
+ // Profile drag scales with area. Induced drag scales with load squared / span squared.
+ const profile=drag-.13*avg(sectionLoads.map(value=>value**2));
+ return {load:span*sectionLoad,drag:span*profile+.13*sectionLoad**2+(lip ? .026 : 0)};
+});
  const taper=s.cuts[2].slice(-4*ny).reduce((a,b)=>a+b,0)/(4*ny*12);
  const noseSlope=s.cuts[1].slice(ny).reduce((a,v,i)=>a+Math.abs(v-s.cuts[1][i]),0)/(11*ny*12);
- return {front:.0032*wings[0].load,rear:.0036*wings[1].load*(1+.17*taper-.23*cut[2]),drag:.0034+.025*(wings[0].drag+wings[1].drag)-.00022*cut[1]-.00026*cut[2]+.00018*noseSlope,ballast:cut.reduce((a,v,i)=>a+v*[5,9,14,6][i],0)};
+ // Sample the carved floor along the airflow. Sudden expansions shed load.
+ let floorLoad=0,separation=0;
+ for(let y=0;y<ny;y++){
+  const row=Array.from({length:nx},(_,x)=>s.cuts[4][x*ny+y]/12);
+  const expansion=row[nx-1]-row[0];
+  const loss=row.slice(1).reduce((sum,h,i)=>sum+Math.max(0,h-row[i]-.13)+Math.max(0,row[i]-h),0);
+  floorLoad+=Math.max(0,expansion-.85*loss)/ny;
+  separation+=loss/ny;
+ }
+ return {front:.00055*floorLoad+.0032*wings[0].load,rear:.0018*floorLoad+.0036*wings[1].load*(1+.17*taper-.23*cut[2]),drag:.0034+.00015*floorLoad+.0011*separation+.025*(wings[0].drag+wings[1].drag)-.00022*cut[1]-.00026*cut[2]+.00018*noseSlope,ballast:cut.reduce((a,v,i)=>a+v*[5,9,14,6,7][i],0)};
 }
 // Control points are in tabletop metres. Each bend rounds off a fraction of
 // its shorter adjacent leg, leaving the rest of each straight genuinely flat.
@@ -68,10 +92,25 @@ export function circuit(id){
 }
 export function lap(s,id){
  const p=circuit(id),n=p.length,a=aero(s),dist=p.map((v,i)=>Math.hypot(v[0]-p[(i+1)%n][0],v[1]-p[(i+1)%n][1]));
+ // Warm tyres have a fixed pressure. Their preferred setting rises with axle load.
+ const rolling=.075*(.44*(2-s.pressure[0])+.56*(2-s.pressure[1]));
+ function axleLimit(speedSquared,axle){
+  const share=axle===0?.44:.56;
+  const aeroLoad=(axle===0?a.front:a.rear)*speedSquared/(.18*share);
+  const preferred=Math.min(2,.2+3.8*aeroLoad);
+  const grip=1-.065*(s.pressure[axle]-preferred)**2;
+  return grip*(9.2+2*aeroLoad);
+ }
  const v=p.map((b,i)=>{const prev=p[(i+n-1)%n],next=p[(i+1)%n],u=Math.atan2(b[1]-prev[1],b[0]-prev[0]),w=Math.atan2(next[1]-b[1],next[0]-b[0]),curv=Math.abs(Math.atan2(Math.sin(w-u),Math.cos(w-u)))/((dist[i]+dist[(i+n-1)%n])/2);
- return Math.sqrt(9.2/Math.max(.04,curv-2*Math.min(a.front/.44,a.rear/.56)/.18));});
+ let low=0,high=12;
+ for(let step=0;step<16;step++){
+  const speed=(low+high)/2,squared=speed*speed;
+  if(curv*squared<=Math.min(axleLimit(squared,0),axleLimit(squared,1)))low=speed;
+  else high=speed;
+ }
+ return low;});
  for(let k=0;k<3;k++){
- for(let i=0;i<n;i++){const j=(i+1)%n,acc=(Math.min(1.25,7/Math.max(.1,v[i]))-a.drag*v[i]**2)/.18;v[j]=Math.min(v[j],Math.sqrt(Math.max(1,v[i]**2+2*acc*dist[i])));}
+ for(let i=0;i<n;i++){const j=(i+1)%n,acc=(Math.min(1.25,7/Math.max(.1,v[i]))-rolling-a.drag*v[i]**2)/.18;v[j]=Math.min(v[j],Math.sqrt(Math.max(1,v[i]**2+2*acc*dist[i])));}
  for(let i=n-1;i>=0;i--){const j=(i+1)%n;v[i]=Math.min(v[i],Math.sqrt(v[j]**2+2*10*dist[i]));}}
  const time=[0];for(let i=0;i<n;i++)time.push(time[i]+2*dist[i]/(v[i]+v[(i+1)%n]));
  return {p,v,time,total:time[n],length:dist.reduce((a,b)=>a+b)};

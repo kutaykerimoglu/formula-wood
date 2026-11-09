@@ -1,8 +1,8 @@
 export default {async fetch(req,env){
- const url=new URL(req.url),api=url.pathname.match(/^\/api\/v2\/scores\/(\d+)$/);
+ const url=new URL(req.url),api=url.pathname.match(/^\/api\/v3\/scores\/(\d+)$/);
  if(!api)return url.pathname==='/'?new Response(PAGE,{headers:{'content-type':'text/html; charset=utf-8'}}):new Response('Not found',{status:404});
  const track=Number(api[1]);if(track>=names.length)return new Response('Unknown track',{status:404});
- const courseKey=1000+track;
+ const courseKey=2000+track;
  const existing=req.headers.get('cookie')?.match(/(?:^|; )tfdriver=([a-f0-9-]{36})(?:;|$)/)?.[1];
  if(req.method==='GET')return Response.json((await env.DB.prepare('SELECT name,time FROM scores WHERE track=? ORDER BY time,player LIMIT 100').bind(courseKey).all()).results,{headers:{'cache-control':'no-store'}});
  if(req.method!=='POST')return new Response('Unsupported method',{status:405});
