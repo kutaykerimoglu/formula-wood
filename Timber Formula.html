@@ -25,17 +25,22 @@
 .gapPanel strong{font:bold italic clamp(20px,3vw,32px) Arial,sans-serif;text-transform:uppercase;line-height:1.05}
 .gapPanel b{font:700 clamp(27px,4.6vw,46px)/1 ui-monospace,monospace;font-variant-numeric:tabular-nums}
 .gapPanel small{color:#f2f4ed;font-size:10px}.gapNumbers{text-align:right}
+
+.circuitOverview{display:grid;grid-template-columns:minmax(200px,.85fr) minmax(280px,1.15fr);border-bottom:1px solid #b6beac}.circuitOverview figure{position:relative;margin:0;background:#e5e9da}.circuitOverview figcaption{position:absolute;top:8px;left:12px;font:600 11px ui-monospace,monospace;text-transform:uppercase}.circuitOverview canvas{display:block;width:100%;height:155px;padding:0}.circuitOverview #board{padding:10px 16px}.boardHead{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}.boardHead h2{font-size:21px}#scores{margin-top:8px;max-height:104px;overflow:auto;font-size:13px}.boardRow{padding:6px 4px}.libraryGrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,305px),1fr));gap:14px}.libraryCard{border:1px solid #b7beab;border-radius:7px;background:#faf8ed;padding:15px;text-align:left}.libraryCard h2{margin-bottom:9px}.setupSummary{border-top:1px solid #ced3c3;padding:9px 0}.setupSummary p{font-size:13px;margin-top:3px}.libraryCard button,#libraryEmpty button{margin-top:10px}#libraryEmpty p{margin-top:7px}@media(max-width:640px){.circuitOverview{grid-template-columns:1fr}.circuitOverview canvas{height:125px}.boardHead input{max-width:105px}}
 </style>
-<header><b><i>≋</i> Timber Formula</b><nav><button class="active" data-tab="tracks">Tracks</button><button data-tab="shop">Workshop</button><button data-tab="race">Lap view</button><button data-tab="board">Leaderboard</button></nav></header>
+<header><b><i>≋</i> Timber Formula</b><nav><button class="active" data-tab="tracks">Tracks</button><button data-tab="library">Workshop</button><button data-tab="race">Lap view</button></nav></header>
 <main><div class="heading"><h1 id="title">Tracks</h1><span class="tag">1:12 · Tabletop series</span></div>
 <div id="trial" class="trial"><div><strong>Three-circuit challenge</strong><p>Beat the stock car on two circuits.</p></div><div id="trialTracks"></div><output id="trialScore"></output></div><section id="tracks" class="trackGrid" aria-label="Choose a circuit"></section>
+<section id="library" class="hidden" aria-label="Your track setups"><div id="libraryList" class="libraryGrid"></div><div id="libraryEmpty" class="panel"><h2>Your setup shelf is empty</h2><p>Choose a circuit and adjust its car or save a comparison setup.</p><button data-go="tracks">Choose a track</button></div></section>
 <section id="shop" class="workstation hidden" aria-label="Car workshop">
   <div class="sessionBar">
-    <div class="circuitIdentity"><canvas id="map" aria-hidden="true"></canvas><div><small id="trackNum"></small><h2 id="currentTrack"></h2></div></div>
+    <div class="circuitIdentity"><div><small id="trackNum"></small><b>Track setup</b></div></div>
     <div class="sessionTimes"><div>Distance<b id="length"></b></div><div>Stock lap<b id="stock"></b></div><div>Best lap<b id="best"></b></div></div>
     <button id="run" class="primary">▶ &nbsp; Run lap</button>
   </div>
-  <div class="workArea">
+  <div class="circuitOverview"><figure><figcaption>Circuit layout</figcaption><canvas id="map" role="img" aria-label="Selected circuit layout"></canvas></figure>
+ <section id="board" aria-label="Track leaderboard"><div class="boardHead"><h2>Leaderboard</h2><label>Driver <input class="boardInput" id="driver" maxlength="20"></label></div><div id="scores"></div></section></div>
+ <div class="workArea">
     <div class="carStation">
       <div class="stage"><canvas id="car" aria-label="Wooden formula car, drag to carve or orbit"></canvas><span class="cutCallout" id="cutCue"></span><small class="corner">TF–01 / Maple</small><select class="view" id="view" aria-label="Camera view"><option>Isometric</option><option>Top</option><option>Side</option><option>Underside</option><option>Front</option><option disabled>Free orbit</option></select></div>
       <div class="readout"><div class="readoutTitle"><h3>Aero balance</h3><small>vs stock · same speed</small></div>
@@ -64,8 +69,8 @@
 <div id="gapPanel" class="gapPanel hidden" aria-label="Lap timing comparison">
  <div><small id="gapPhase"></small><strong id="gapState"></strong></div>
  <div class="gapNumbers"><b id="gapTime"></b><small id="gapTarget"></small></div>
-</div><div id="sectorReport" class="hidden"><div class="reportTitle"><h3>Sector times</h3><label>Compare with <select id="reference"><option value="previous">Previous run</option><option value="stock">Stock car</option><option value="saved">Saved setup</option></select></label></div><div class="splits" id="splits"></div><p id="lapBest" class="sub"></p></div><canvas class="raceCanvas" id="raceMap"></canvas><div class="tools"><span id="raceInfo"></span><div class="group"><button id="speed">1× speed</button><button id="again">Run again</button><button data-go="shop">Workshop</button></div></div></section>
-<section id="board" class="panel screen hidden"><div class="row"><h2 id="boardName"></h2><label>Driver <input class="boardInput" id="driver" maxlength="20"></label></div><div id="scores"></div></section></main><script type="module">const parts=['Front wing','Nose','Sidepods','Rear wing','Diffuser'];
+</div><div id="sectorReport" class="hidden"><div class="reportTitle"><h3>Sector times</h3><label>Compare with <select id="reference"><option value="previous">Previous run</option><option value="stock">Stock car</option><option value="saved">Saved setup</option></select></label></div><div class="splits" id="splits"></div><p id="lapBest" class="sub"></p></div><canvas class="raceCanvas" id="raceMap"></canvas><div class="tools"><span id="raceInfo"></span><div class="group"><button id="speed">1× speed</button><button id="again">Run again</button><button data-go="shop">Track setup</button></div></div></section>
+</main><script type="module">const parts=['Front wing','Nose','Sidepods','Rear wing','Diffuser'];
 const nx=12,ny=10;
 const blank=()=>({cuts:parts.map(()=>Array(nx*ny).fill(0)),angles:[6,8],pressure:[1,1],height:1,gurney:false});
 function valid(s){return !!s&&Array.isArray(s.angles)&&s.angles.length===2&&s.angles.every(x=>Number.isInteger(x)&&x>=0&&x<=18)&&Array.isArray(s.cuts)&&s.cuts.length===parts.length&&Array.isArray(s.pressure)&&s.pressure.length===2&&s.pressure.every(level)&&level(s.height)&&typeof s.gurney==="boolean"&&s.cuts.every((a,p)=>Array.isArray(a)&&a.length===nx*ny&&a.every((x,i)=>Number.isInteger(x)&&x>=0&&x<=12&&(p===2||x===a[Math.floor(i/ny)*ny+ny-1-i%ny])));}
@@ -368,7 +373,7 @@ function refresh(){const s=setup();
  $('mount').value=s.height;$('lip').checked=s.gurney;
  const saved=valid(data[id].snapshot);
  $('restoreSetup').disabled=!saved;
- txt('keepSetup',saved?'Replace saved setup':'Save setup');txt('currentTrack',names[id]);drawCar();updateAero();$('undo').disabled=!history.length;s.angles.forEach((v,i)=>{$('a'+i).value=v;txt('val'+i,v+'°');});txt('ballast',aero(s).ballast.toFixed(2)+' g');txt('stock',fmt(lap(blank(),id).total));txt('best',data[id].best?fmt(data[id].best):'—');txt('length',lap(s,id).length.toFixed(1)+' m');txt('trackNum','Circuit '+String(id+1).padStart(2,'0')+' of 20 · '+profiles[id]);drawTrack($('map'),circuit(id));}
+ txt('keepSetup',saved?'Replace saved setup':'Save setup');drawCar();updateAero();$('undo').disabled=!history.length;s.angles.forEach((v,i)=>{$('a'+i).value=v;txt('val'+i,v+'°');});txt('ballast',aero(s).ballast.toFixed(2)+' g');txt('stock',fmt(lap(blank(),id).total));txt('best',data[id].best?fmt(data[id].best):'—');txt('length',lap(s,id).length.toFixed(1)+' m');txt('trackNum','Circuit '+String(id+1).padStart(2,'0')+' of 20 · '+profiles[id]);drawTrack($('map'),circuit(id));}
 function setMode(m){mode=m;for(let v of ['orbit','chisel'])$(v).classList.toggle('chosen',v===m);hover=null;car.style.cursor=m==='orbit'?'grab':knifeCursor;updateCue();drawCar();message(m==='orbit'?'Drag to rotate the car.':'Drag the chisel across the selected surface.');}
 $('orbit').onclick=()=>setMode('orbit');$('chisel').onclick=()=>setMode('chisel');$('view').onchange=e=>{renderer.view(e.target.value);drawCar();};
 $('undo').onclick=()=>{if(history.length){setup().cuts=history.pop();save();refresh();message('Last stroke undone.');}};
@@ -457,9 +462,70 @@ function start(){txt('raceInfo','');let s=structuredClone(setup());
  $('reference').value=references.previous?'previous':'stock';
  $('sectorReport').classList.add('hidden');
  race={s,references,run:lap(s,id),ghost:lap(valid(data[id].ghost)?data[id].ghost:blank(),id),label:data[id].best?'personal best':'stock',elapsed:0,last:performance.now()};switchTab('race');}
-async function submit(s,track){if(location.protocol==='file:')return;try{let res=await fetch('/api/v3/scores/'+track,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({s,name:data.name||'Guest driver'})});if(!res.ok)throw Error();}catch{if(tab==='race')$('raceInfo').textContent+=' · Online submission unavailable';}}
-async function board(){let track=id;txt('boardName',names[id]);txt('scores','Loading times…');let rows;try{const res=await fetch('/api/v3/scores/'+id);rows=await res.json();if(!Array.isArray(rows))throw Error();}catch{txt('scores','Online leaderboard unavailable. Personal best: '+(data[id].best?fmt(data[id].best):'—'));return;}if(id!==track)return;$('scores').replaceChildren();if(!rows.length)txt('scores','No recorded laps on this circuit.');rows.forEach((r,i)=>{const el=document.createElement('div');el.className='boardRow';for(let t of [i+1,r.name,fmt(r.time)]){const v=document.createElement('span');v.textContent=t;el.append(v);}$('scores').append(el);});}
-function switchTab(t){tab=t;$('trial').classList.toggle('hidden',t!=='tracks');document.querySelectorAll('header button').forEach(b=>b.classList.toggle('active',b.dataset.tab===t));for(let v of ['tracks','shop','race','board'])$(v).classList.toggle('hidden',v!==t);txt('title',({tracks:'Tracks',shop:'Carving bench',race:'Lap view',board:'Leaderboard'})[t]);if(t==='tracks')showTracks();if(t==='shop')refresh();if(t==='race'){if(race)race.last=performance.now();renderRace();}if(t==='board')board();}
+async function submit(s,track){if(location.protocol==='file:')return;try{let res=await fetch('/api/v3/scores/'+track,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({s,name:data.name||'Guest driver'})});if(!res.ok)throw Error();if(tab==='shop'&&track===id)board();}catch{if(tab==='race')$('raceInfo').textContent+=' · Online submission unavailable';}}
+let boardRequest=0;
+async function board(){
+ const track=id,request=++boardRequest,scores=$('scores');
+ txt('scores','Loading times…');
+ try{
+  const response=await fetch('/api/v3/scores/'+track);
+  if(!response.ok)throw Error();
+  const rows=await response.json();
+  if(!Array.isArray(rows))throw Error();
+  if(request!==boardRequest||id!==track||tab!=='shop')return;
+  scores.replaceChildren();
+  if(!rows.length)txt('scores','Be the first to record a lap.');
+  rows.forEach((row,index)=>{
+   const line=document.createElement('div');
+   line.className='boardRow';
+   for(const value of [index+1,row.name,fmt(row.time)]){
+    const field=document.createElement('span');field.textContent=value;line.append(field);
+   }
+   scores.append(line);
+  });
+ }catch{
+  if(request===boardRequest&&id===track&&tab==='shop')txt('scores','Online leaderboard unavailable.');
+ }
+}
+function setupSummary(label,carSetup){
+ const section=document.createElement('div');section.className='setupSummary';
+ const heading=document.createElement('strong');heading.textContent=label;
+ const levels=['low','standard','high'];
+ const description=document.createElement('p');
+ description.textContent='Wings (F/R) '+carSetup.angles.join('° / ')+'° · Tyres '+carSetup.pressure.map(n=>levels[n]).join(' / ');
+ const geometry=document.createElement('p');
+ const surfaces=parts.filter((_,i)=>carSetup.cuts[i].some(Boolean));
+ geometry.textContent=(surfaces.length?'Carved '+surfaces.join(', ').toLowerCase():'Stock carving')+' · '+['Low','Middle','High'][carSetup.height]+' front mount'+(carSetup.gurney?' · Gurney fitted':'');
+ section.append(heading,description,geometry);return section;
+}
+function showLibrary(){
+ const list=$('libraryList');list.replaceChildren();
+ const factory=blank();
+ names.forEach((name,track)=>{
+  const rec=data[track];
+  if(!valid(rec?.s))return;
+  const saved=valid(rec.snapshot),car=rec.s;
+  const customized=car.gurney||car.height!==factory.height||car.angles.some((n,i)=>n!==factory.angles[i])||car.pressure.some(n=>n!==1)||car.cuts.some(surface=>surface.some(Boolean));
+  if(!saved&&!customized)return;
+  const card=document.createElement('article');card.className='libraryCard';
+  const title=document.createElement('h2');title.textContent=name;card.append(title,setupSummary('Current setup',car));
+  if(saved)card.append(setupSummary('Saved comparison',rec.snapshot));
+  const open=document.createElement('button');open.textContent='Open track setup';open.onclick=()=>selectCircuit(track);card.append(open);list.append(card);
+ });
+ $('libraryEmpty').classList.toggle('hidden',list.children.length>0);
+}
+function switchTab(t){
+ tab=t;
+ $('trial').classList.toggle('hidden',t!=='tracks');
+ const active=t==='shop'?'tracks':t;
+ document.querySelectorAll('header button').forEach(b=>b.classList.toggle('active',b.dataset.tab===active));
+ for(const view of ['tracks','shop','race','library'])$(view).classList.toggle('hidden',view!==t);
+ txt('title',({tracks:'Tracks',shop:names[id],race:'Lap view',library:'Workshop'})[t]);
+ if(t==='tracks')showTracks();
+ if(t==='library')showLibrary();
+ if(t==='shop'){refresh();board();}
+ if(t==='race'){if(race)race.last=performance.now();renderRace();}
+}
 document.querySelectorAll('[data-tab],[data-go]').forEach(b=>b.onclick=()=>switchTab(b.dataset.tab||b.dataset.go));
 $('run').onclick=$('again').onclick=start;$('speed').onclick=()=>{rate=rate===1?2:1;txt('speed',rate+'× speed');};
 window.addEventListener('resize',()=>{if(tab==='tracks')showTracks();if(tab==='shop')refresh();if(tab==='race')renderRace();});setup();switchTab('tracks');

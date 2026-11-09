@@ -121,7 +121,7 @@ function refresh(){const s=setup();
  $('mount').value=s.height;$('lip').checked=s.gurney;
  const saved=valid(data[id].snapshot);
  $('restoreSetup').disabled=!saved;
- txt('keepSetup',saved?'Replace saved setup':'Save setup');txt('currentTrack',names[id]);drawCar();updateAero();$('undo').disabled=!history.length;s.angles.forEach((v,i)=>{$('a'+i).value=v;txt('val'+i,v+'°');});txt('ballast',aero(s).ballast.toFixed(2)+' g');txt('stock',fmt(lap(blank(),id).total));txt('best',data[id].best?fmt(data[id].best):'—');txt('length',lap(s,id).length.toFixed(1)+' m');txt('trackNum','Circuit '+String(id+1).padStart(2,'0')+' of 20 · '+profiles[id]);drawTrack($('map'),circuit(id));}
+ txt('keepSetup',saved?'Replace saved setup':'Save setup');drawCar();updateAero();$('undo').disabled=!history.length;s.angles.forEach((v,i)=>{$('a'+i).value=v;txt('val'+i,v+'°');});txt('ballast',aero(s).ballast.toFixed(2)+' g');txt('stock',fmt(lap(blank(),id).total));txt('best',data[id].best?fmt(data[id].best):'—');txt('length',lap(s,id).length.toFixed(1)+' m');txt('trackNum','Circuit '+String(id+1).padStart(2,'0')+' of 20 · '+profiles[id]);drawTrack($('map'),circuit(id));}
 function setMode(m){mode=m;for(let v of ['orbit','chisel'])$(v).classList.toggle('chosen',v===m);hover=null;car.style.cursor=m==='orbit'?'grab':knifeCursor;updateCue();drawCar();message(m==='orbit'?'Drag to rotate the car.':'Drag the chisel across the selected surface.');}
 $('orbit').onclick=()=>setMode('orbit');$('chisel').onclick=()=>setMode('chisel');$('view').onchange=e=>{renderer.view(e.target.value);drawCar();};
 $('undo').onclick=()=>{if(history.length){setup().cuts=history.pop();save();refresh();message('Last stroke undone.');}};
@@ -210,9 +210,70 @@ function start(){txt('raceInfo','');let s=structuredClone(setup());
  $('reference').value=references.previous?'previous':'stock';
  $('sectorReport').classList.add('hidden');
  race={s,references,run:lap(s,id),ghost:lap(valid(data[id].ghost)?data[id].ghost:blank(),id),label:data[id].best?'personal best':'stock',elapsed:0,last:performance.now()};switchTab('race');}
-async function submit(s,track){if(location.protocol==='file:')return;try{let res=await fetch('/api/v3/scores/'+track,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({s,name:data.name||'Guest driver'})});if(!res.ok)throw Error();}catch{if(tab==='race')$('raceInfo').textContent+=' · Online submission unavailable';}}
-async function board(){let track=id;txt('boardName',names[id]);txt('scores','Loading times…');let rows;try{const res=await fetch('/api/v3/scores/'+id);rows=await res.json();if(!Array.isArray(rows))throw Error();}catch{txt('scores','Online leaderboard unavailable. Personal best: '+(data[id].best?fmt(data[id].best):'—'));return;}if(id!==track)return;$('scores').replaceChildren();if(!rows.length)txt('scores','No recorded laps on this circuit.');rows.forEach((r,i)=>{const el=document.createElement('div');el.className='boardRow';for(let t of [i+1,r.name,fmt(r.time)]){const v=document.createElement('span');v.textContent=t;el.append(v);}$('scores').append(el);});}
-function switchTab(t){tab=t;$('trial').classList.toggle('hidden',t!=='tracks');document.querySelectorAll('header button').forEach(b=>b.classList.toggle('active',b.dataset.tab===t));for(let v of ['tracks','shop','race','board'])$(v).classList.toggle('hidden',v!==t);txt('title',({tracks:'Tracks',shop:'Carving bench',race:'Lap view',board:'Leaderboard'})[t]);if(t==='tracks')showTracks();if(t==='shop')refresh();if(t==='race'){if(race)race.last=performance.now();renderRace();}if(t==='board')board();}
+async function submit(s,track){if(location.protocol==='file:')return;try{let res=await fetch('/api/v3/scores/'+track,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({s,name:data.name||'Guest driver'})});if(!res.ok)throw Error();if(tab==='shop'&&track===id)board();}catch{if(tab==='race')$('raceInfo').textContent+=' · Online submission unavailable';}}
+let boardRequest=0;
+async function board(){
+ const track=id,request=++boardRequest,scores=$('scores');
+ txt('scores','Loading times…');
+ try{
+  const response=await fetch('/api/v3/scores/'+track);
+  if(!response.ok)throw Error();
+  const rows=await response.json();
+  if(!Array.isArray(rows))throw Error();
+  if(request!==boardRequest||id!==track||tab!=='shop')return;
+  scores.replaceChildren();
+  if(!rows.length)txt('scores','Be the first to record a lap.');
+  rows.forEach((row,index)=>{
+   const line=document.createElement('div');
+   line.className='boardRow';
+   for(const value of [index+1,row.name,fmt(row.time)]){
+    const field=document.createElement('span');field.textContent=value;line.append(field);
+   }
+   scores.append(line);
+  });
+ }catch{
+  if(request===boardRequest&&id===track&&tab==='shop')txt('scores','Online leaderboard unavailable.');
+ }
+}
+function setupSummary(label,carSetup){
+ const section=document.createElement('div');section.className='setupSummary';
+ const heading=document.createElement('strong');heading.textContent=label;
+ const levels=['low','standard','high'];
+ const description=document.createElement('p');
+ description.textContent='Wings (F/R) '+carSetup.angles.join('° / ')+'° · Tyres '+carSetup.pressure.map(n=>levels[n]).join(' / ');
+ const geometry=document.createElement('p');
+ const surfaces=parts.filter((_,i)=>carSetup.cuts[i].some(Boolean));
+ geometry.textContent=(surfaces.length?'Carved '+surfaces.join(', ').toLowerCase():'Stock carving')+' · '+['Low','Middle','High'][carSetup.height]+' front mount'+(carSetup.gurney?' · Gurney fitted':'');
+ section.append(heading,description,geometry);return section;
+}
+function showLibrary(){
+ const list=$('libraryList');list.replaceChildren();
+ const factory=blank();
+ names.forEach((name,track)=>{
+  const rec=data[track];
+  if(!valid(rec?.s))return;
+  const saved=valid(rec.snapshot),car=rec.s;
+  const customized=car.gurney||car.height!==factory.height||car.angles.some((n,i)=>n!==factory.angles[i])||car.pressure.some(n=>n!==1)||car.cuts.some(surface=>surface.some(Boolean));
+  if(!saved&&!customized)return;
+  const card=document.createElement('article');card.className='libraryCard';
+  const title=document.createElement('h2');title.textContent=name;card.append(title,setupSummary('Current setup',car));
+  if(saved)card.append(setupSummary('Saved comparison',rec.snapshot));
+  const open=document.createElement('button');open.textContent='Open track setup';open.onclick=()=>selectCircuit(track);card.append(open);list.append(card);
+ });
+ $('libraryEmpty').classList.toggle('hidden',list.children.length>0);
+}
+function switchTab(t){
+ tab=t;
+ $('trial').classList.toggle('hidden',t!=='tracks');
+ const active=t==='shop'?'tracks':t;
+ document.querySelectorAll('header button').forEach(b=>b.classList.toggle('active',b.dataset.tab===active));
+ for(const view of ['tracks','shop','race','library'])$(view).classList.toggle('hidden',view!==t);
+ txt('title',({tracks:'Tracks',shop:names[id],race:'Lap view',library:'Workshop'})[t]);
+ if(t==='tracks')showTracks();
+ if(t==='library')showLibrary();
+ if(t==='shop'){refresh();board();}
+ if(t==='race'){if(race)race.last=performance.now();renderRace();}
+}
 document.querySelectorAll('[data-tab],[data-go]').forEach(b=>b.onclick=()=>switchTab(b.dataset.tab||b.dataset.go));
 $('run').onclick=$('again').onclick=start;$('speed').onclick=()=>{rate=rate===1?2:1;txt('speed',rate+'× speed');};
 window.addEventListener('resize',()=>{if(tab==='tracks')showTracks();if(tab==='shop')refresh();if(tab==='race')renderRace();});setup();switchTab('tracks');

@@ -25,17 +25,22 @@
 .gapPanel strong{font:bold italic clamp(20px,3vw,32px) Arial,sans-serif;text-transform:uppercase;line-height:1.05}
 .gapPanel b{font:700 clamp(27px,4.6vw,46px)/1 ui-monospace,monospace;font-variant-numeric:tabular-nums}
 .gapPanel small{color:#f2f4ed;font-size:10px}.gapNumbers{text-align:right}
+
+.circuitOverview{display:grid;grid-template-columns:minmax(200px,.85fr) minmax(280px,1.15fr);border-bottom:1px solid #b6beac}.circuitOverview figure{position:relative;margin:0;background:#e5e9da}.circuitOverview figcaption{position:absolute;top:8px;left:12px;font:600 11px ui-monospace,monospace;text-transform:uppercase}.circuitOverview canvas{display:block;width:100%;height:155px;padding:0}.circuitOverview #board{padding:10px 16px}.boardHead{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}.boardHead h2{font-size:21px}#scores{margin-top:8px;max-height:104px;overflow:auto;font-size:13px}.boardRow{padding:6px 4px}.libraryGrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,305px),1fr));gap:14px}.libraryCard{border:1px solid #b7beab;border-radius:7px;background:#faf8ed;padding:15px;text-align:left}.libraryCard h2{margin-bottom:9px}.setupSummary{border-top:1px solid #ced3c3;padding:9px 0}.setupSummary p{font-size:13px;margin-top:3px}.libraryCard button,#libraryEmpty button{margin-top:10px}#libraryEmpty p{margin-top:7px}@media(max-width:640px){.circuitOverview{grid-template-columns:1fr}.circuitOverview canvas{height:125px}.boardHead input{max-width:105px}}
 </style>
-<header><b><i>≋</i> Timber Formula</b><nav><button class="active" data-tab="tracks">Tracks</button><button data-tab="shop">Workshop</button><button data-tab="race">Lap view</button><button data-tab="board">Leaderboard</button></nav></header>
+<header><b><i>≋</i> Timber Formula</b><nav><button class="active" data-tab="tracks">Tracks</button><button data-tab="library">Workshop</button><button data-tab="race">Lap view</button></nav></header>
 <main><div class="heading"><h1 id="title">Tracks</h1><span class="tag">1:12 · Tabletop series</span></div>
 <div id="trial" class="trial"><div><strong>Three-circuit challenge</strong><p>Beat the stock car on two circuits.</p></div><div id="trialTracks"></div><output id="trialScore"></output></div><section id="tracks" class="trackGrid" aria-label="Choose a circuit"></section>
+<section id="library" class="hidden" aria-label="Your track setups"><div id="libraryList" class="libraryGrid"></div><div id="libraryEmpty" class="panel"><h2>Your setup shelf is empty</h2><p>Choose a circuit and adjust its car or save a comparison setup.</p><button data-go="tracks">Choose a track</button></div></section>
 <section id="shop" class="workstation hidden" aria-label="Car workshop">
   <div class="sessionBar">
-    <div class="circuitIdentity"><canvas id="map" aria-hidden="true"></canvas><div><small id="trackNum"></small><h2 id="currentTrack"></h2></div></div>
+    <div class="circuitIdentity"><div><small id="trackNum"></small><b>Track setup</b></div></div>
     <div class="sessionTimes"><div>Distance<b id="length"></b></div><div>Stock lap<b id="stock"></b></div><div>Best lap<b id="best"></b></div></div>
     <button id="run" class="primary">▶ &nbsp; Run lap</button>
   </div>
-  <div class="workArea">
+  <div class="circuitOverview"><figure><figcaption>Circuit layout</figcaption><canvas id="map" role="img" aria-label="Selected circuit layout"></canvas></figure>
+ <section id="board" aria-label="Track leaderboard"><div class="boardHead"><h2>Leaderboard</h2><label>Driver <input class="boardInput" id="driver" maxlength="20"></label></div><div id="scores"></div></section></div>
+ <div class="workArea">
     <div class="carStation">
       <div class="stage"><canvas id="car" aria-label="Wooden formula car, drag to carve or orbit"></canvas><span class="cutCallout" id="cutCue"></span><small class="corner">TF–01 / Maple</small><select class="view" id="view" aria-label="Camera view"><option>Isometric</option><option>Top</option><option>Side</option><option>Underside</option><option>Front</option><option disabled>Free orbit</option></select></div>
       <div class="readout"><div class="readoutTitle"><h3>Aero balance</h3><small>vs stock · same speed</small></div>
@@ -64,5 +69,5 @@
 <div id="gapPanel" class="gapPanel hidden" aria-label="Lap timing comparison">
  <div><small id="gapPhase"></small><strong id="gapState"></strong></div>
  <div class="gapNumbers"><b id="gapTime"></b><small id="gapTarget"></small></div>
-</div><div id="sectorReport" class="hidden"><div class="reportTitle"><h3>Sector times</h3><label>Compare with <select id="reference"><option value="previous">Previous run</option><option value="stock">Stock car</option><option value="saved">Saved setup</option></select></label></div><div class="splits" id="splits"></div><p id="lapBest" class="sub"></p></div><canvas class="raceCanvas" id="raceMap"></canvas><div class="tools"><span id="raceInfo"></span><div class="group"><button id="speed">1× speed</button><button id="again">Run again</button><button data-go="shop">Workshop</button></div></div></section>
-<section id="board" class="panel screen hidden"><div class="row"><h2 id="boardName"></h2><label>Driver <input class="boardInput" id="driver" maxlength="20"></label></div><div id="scores"></div></section></main><script type="module">/* APP */</script></html>
+</div><div id="sectorReport" class="hidden"><div class="reportTitle"><h3>Sector times</h3><label>Compare with <select id="reference"><option value="previous">Previous run</option><option value="stock">Stock car</option><option value="saved">Saved setup</option></select></label></div><div class="splits" id="splits"></div><p id="lapBest" class="sub"></p></div><canvas class="raceCanvas" id="raceMap"></canvas><div class="tools"><span id="raceInfo"></span><div class="group"><button id="speed">1× speed</button><button id="again">Run again</button><button data-go="shop">Track setup</button></div></div></section>
+</main><script type="module">/* APP */</script></html>
