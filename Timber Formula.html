@@ -40,6 +40,7 @@ body,button,input,select,.setupOption select,.pressurePair select{font-family:Ti
 h1,h2,h3,header b,.cardBody strong,.trial strong,.sessionBar .circuitIdentity b,.readoutTitle h3,.adjustments h3,.gapPanel strong{font-family:Titillium,Arial,sans-serif;font-style:italic;font-weight:700;letter-spacing:-.025em}
 header b{font-size:26px}.cardBody strong{font-size:27px}.boardRow,.sessionTimes b,.gapPanel b,.gauges output{font-variant-numeric:tabular-nums}
 .slotRow{display:grid;grid-template-columns:minmax(65px,1fr) auto auto;gap:4px;margin:5px 0}.slotRow input{min-width:0;border:1px solid #abb7a3;background:#fffdf5;border-radius:4px;padding:4px 7px}.slotRow button{font-size:13px;padding:5px 8px}
+.boardRow{grid-template-columns:3.2em minmax(0,1fr) 6.5em 6.7em;gap:6px;font-variant-numeric:tabular-nums}.boardRow span:nth-child(n+3){text-align:right;white-space:nowrap}.boardRow span:nth-child(2){overflow-wrap:anywhere}.boardRow span:first-child{font-weight:bold;color:#304d3c}.boardRow.timingHead{position:sticky;top:0;background:#fbf9ef;font-size:11px;text-transform:uppercase;letter-spacing:.04em}#scores{max-height:155px}
 </style>
 <header><b><i>≋</i> Timber Formula</b><nav><button class="active" data-tab="tracks">Tracks</button><button data-tab="library">Workshop</button><button data-tab="race">Lap view</button></nav></header>
 <main><div class="heading"><h1 id="title">Tracks</h1><span class="tag">1:12 · Tabletop series</span></div>
@@ -536,10 +537,19 @@ async function board(){
   if(request!==boardRequest||id!==track||tab!=='shop')return;
   scores.replaceChildren();
   if(!rows.length)txt('scores','Be the first to record a lap.');
+  if(rows.length){
+   const header=document.createElement('div');
+   header.className='boardRow timingHead';
+   for(const label of ['Pos','Driver','Best lap','Gap to P1']){
+    const field=document.createElement('span');field.textContent=label;header.append(field);
+   }
+   scores.append(header);
+  }
   rows.forEach((row,index)=>{
    const line=document.createElement('div');
    line.className='boardRow';
-   for(const value of [index+1,row.name,fmt(row.time)]){
+   const gap=index===0?'—':'+'+fmt(row.time-rows[0].time);
+   for(const value of ['P'+(index+1),row.name,fmt(row.time),gap]){
     const field=document.createElement('span');field.textContent=value;line.append(field);
    }
    scores.append(line);

@@ -258,10 +258,19 @@ async function board(){
   if(request!==boardRequest||id!==track||tab!=='shop')return;
   scores.replaceChildren();
   if(!rows.length)txt('scores','Be the first to record a lap.');
+  if(rows.length){
+   const header=document.createElement('div');
+   header.className='boardRow timingHead';
+   for(const label of ['Pos','Driver','Best lap','Gap to P1']){
+    const field=document.createElement('span');field.textContent=label;header.append(field);
+   }
+   scores.append(header);
+  }
   rows.forEach((row,index)=>{
    const line=document.createElement('div');
    line.className='boardRow';
-   for(const value of [index+1,row.name,fmt(row.time)]){
+   const gap=index===0?'—':'+'+fmt(row.time-rows[0].time);
+   for(const value of ['P'+(index+1),row.name,fmt(row.time),gap]){
     const field=document.createElement('span');field.textContent=value;line.append(field);
    }
    scores.append(line);
