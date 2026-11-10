@@ -248,15 +248,16 @@ function renderRace(){cancelAnimationFrame(frame);if(tab!=='race')return;if(!rac
  if(!race.finished){race.finished=true;const rec=data[id];if(!rec.best||r.total<rec.best){rec.best=r.total;rec.ghost=race.s;}rec.previous=race.s;save();submit(race,id);}showReport();}
 function start(){$('again').disabled=true;txt('raceInfo','');let s=structuredClone(setup());
  const rec=data[id],references={stock:cards[id].stock};
+ if(rec.best && valid(rec.ghost)) references.personalBest = lap(rec.ghost,id);
  if(valid(rec.previous))references.previous=lap(rec.previous,id);
  for(let i=0;i<3;i++){
   const slot=rec.slots?.[i],opt=$('refSlot'+i);
   opt.textContent=slot?.name||'Empty slot';opt.hidden=!slot;
   if(valid(slot?.car))references['slot'+i]=lap(slot.car,id);
  }
- $('reference').value=references.previous?'previous':'stock';
+ $('reference').value = references.personalBest ? 'personalBest' : 'stock';
  $('sectorReport').classList.add('hidden');
- race={s,references,run:lap(s,id),ghost:lap(valid(data[id].ghost)?data[id].ghost:blank(),id),label:data[id].best?'personal best':'stock',elapsed:0,last:performance.now()};txt('runSpec',(s.wood??'Maple')+' · Wings '+s.angles.join('° / ')+'° · Tyres '+s.pressure.map(v=>['low','standard','high'][v]).join(' / '));switchTab('race');}
+ race={s,references,run:lap(s,id),ghost:references.personalBest ?? references.stock,label:references.personalBest?'personal best':'stock',elapsed:0,last:performance.now()};txt('runSpec',(s.wood??'Maple')+' · Wings '+s.angles.join('° / ')+'° · Tyres '+s.pressure.map(v=>['low','standard','high'][v]).join(' / '));switchTab('race');}
 async function submit(completed,track){
  if(location.protocol==='file:'){txt('raceInfo','Local lap');return;}
  txt('raceInfo','Confirming position…');

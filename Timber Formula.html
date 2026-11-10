@@ -71,7 +71,7 @@ header b{font-size:26px}.cardBody strong{font-size:27px}.boardRow,.sessionTimes 
  <div><small id="gapPhase"></small><strong id="gapState"></strong></div>
  <div class="gapNumbers"><b id="gapTime"></b><small id="gapTarget"></small></div>
 </div></div>
-<div id="race" class="hidden"><div class="row"><span id="runSpec"></span><b class="mono" id="clock"></b></div><div id="sectorReport" class="hidden"><div class="reportTitle"><h3>Sector times</h3><label>Compare with <select id="reference"><option value="previous">Previous run</option><option value="stock">Stock car</option><option id="refSlot0" value="slot0">Slot 1</option><option id="refSlot1" value="slot1">Slot 2</option><option id="refSlot2" value="slot2">Slot 3</option></select></label></div><div class="splits" id="splits"></div><p id="lapBest" class="sub"></p></div><div class="tools"><strong id="raceInfo"></strong><div class="group"><button id="speed">1× speed</button><button id="again">Replay lap</button><button id="standings">Standings</button><button data-go="shop" class="chosen">Adjust setup</button></div></div></div>
+<div id="race" class="hidden"><div class="row"><span id="runSpec"></span><b class="mono" id="clock"></b></div><div id="sectorReport" class="hidden"><div class="reportTitle"><h3>Sector times</h3><label>Compare with <select id="reference"><option value="personalBest">Personal best at lap start</option><option value="previous">Previous run</option><option value="stock">Stock car</option><option id="refSlot0" value="slot0">Slot 1</option><option id="refSlot1" value="slot1">Slot 2</option><option id="refSlot2" value="slot2">Slot 3</option></select></label></div><div class="splits" id="splits"></div><p id="lapBest" class="sub"></p></div><div class="tools"><strong id="raceInfo"></strong><div class="group"><button id="speed">1× speed</button><button id="again">Replay lap</button><button id="standings">Standings</button><button data-go="shop" class="chosen">Adjust setup</button></div></div></div>
 <section class="profileStrip" aria-label="Circuit profile"><h2>Circuit profile</h2><span>Longest straight <b id="longStraight"></b></span><span title="Stock minimum corner speed: slow below 2.5 m/s, fast from 4.5 m/s">Corners by stock speed <b id="cornerMix"></b></span></section><div class="pitLayout"><div class="workArea">
     <div class="carStation">
       <div class="stage"><canvas id="car" aria-label="Wooden formula car, drag to carve or orbit"></canvas><span class="cutCallout" id="cutCue"></span><small class="corner" id="woodLabel">TF–01 / Maple</small><select class="view" id="view" aria-label="Camera view"><option>Isometric</option><option>Top</option><option>Side</option><option>Underside</option><option>Front</option><option disabled>Free orbit</option></select></div>
@@ -555,15 +555,16 @@ function renderRace(){cancelAnimationFrame(frame);if(tab!=='race')return;if(!rac
  if(!race.finished){race.finished=true;const rec=data[id];if(!rec.best||r.total<rec.best){rec.best=r.total;rec.ghost=race.s;}rec.previous=race.s;save();submit(race,id);}showReport();}
 function start(){$('again').disabled=true;txt('raceInfo','');let s=structuredClone(setup());
  const rec=data[id],references={stock:cards[id].stock};
+ if(rec.best && valid(rec.ghost)) references.personalBest = lap(rec.ghost,id);
  if(valid(rec.previous))references.previous=lap(rec.previous,id);
  for(let i=0;i<3;i++){
   const slot=rec.slots?.[i],opt=$('refSlot'+i);
   opt.textContent=slot?.name||'Empty slot';opt.hidden=!slot;
   if(valid(slot?.car))references['slot'+i]=lap(slot.car,id);
  }
- $('reference').value=references.previous?'previous':'stock';
+ $('reference').value = references.personalBest ? 'personalBest' : 'stock';
  $('sectorReport').classList.add('hidden');
- race={s,references,run:lap(s,id),ghost:lap(valid(data[id].ghost)?data[id].ghost:blank(),id),label:data[id].best?'personal best':'stock',elapsed:0,last:performance.now()};txt('runSpec',(s.wood??'Maple')+' · Wings '+s.angles.join('° / ')+'° · Tyres '+s.pressure.map(v=>['low','standard','high'][v]).join(' / '));switchTab('race');}
+ race={s,references,run:lap(s,id),ghost:references.personalBest ?? references.stock,label:references.personalBest?'personal best':'stock',elapsed:0,last:performance.now()};txt('runSpec',(s.wood??'Maple')+' · Wings '+s.angles.join('° / ')+'° · Tyres '+s.pressure.map(v=>['low','standard','high'][v]).join(' / '));switchTab('race');}
 async function submit(completed,track){
  if(location.protocol==='file:'){txt('raceInfo','Local lap');return;}
  txt('raceInfo','Confirming position…');
