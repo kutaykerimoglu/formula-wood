@@ -205,7 +205,7 @@ function refresh(){const s=setup();
  s.pressure.forEach((value,axle)=>$('pressure'+axle).value=value);
  $('mount').value=s.height;$('lip').checked=s.gurney;
  $('wood').value=s.wood??'Maple';txt('woodLabel','TF–01 / '+$('wood').value);txt('woodHint',woods[$('wood').value].description);
- drawCar();updateAero();$('undo').disabled=!history.length;s.angles.forEach((v,i)=>{$('a'+i).value=v;txt('val'+i,v+'°');});txt('ballast',aero(s).ballast.toFixed(2)+' g');txt('stock',fmt(lap(blank(),id).total));txt('best',data[id].best?fmt(data[id].best):'—');txt('length',lap(s,id).length.toFixed(1)+' m');txt('trackNum','Circuit '+String(id+1).padStart(2,'0')+' of 20 · '+profiles[id]);drawTrack($('map'),circuit(id));}
+ drawCar();updateAero();$('undo').disabled=!history.length;s.angles.forEach((v,i)=>{$('a'+i).value=v;txt('val'+i,v+'°');});txt('ballast',aero(s).ballast.toFixed(2)+' g');txt('stock',fmt(lap(blank(),id).total));txt('best',data[id].best?fmt(data[id].best):'—');txt('length',lap(s,id).length.toFixed(1)+' m');txt('trackNum','Circuit '+String(id+1).padStart(2,'0')+' of 20 · '+profiles[id]);if(tab==='shop')drawTrack($('map'),circuit(id));}
 function setMode(m){mode=m;for(let v of ['orbit','chisel'])$(v).classList.toggle('chosen',v===m);hover=null;car.style.cursor=m==='orbit'?'grab':knifeCursor;updateCue();drawCar();message(m==='orbit'?'Drag to rotate the car.':'Drag the chisel across the selected surface.');}
 $('orbit').onclick=()=>setMode('orbit');$('chisel').onclick=()=>setMode('chisel');$('view').onchange=e=>{renderer.view(e.target.value);drawCar();};
 $('undo').onclick=()=>{if(history.length){setup().cuts=history.pop();save();refresh();message('Last stroke undone.');}};
@@ -410,3 +410,11 @@ document.querySelectorAll('[data-mode]').forEach(button=>button.onclick=()=>{
  drawCar();
 });
 $('helpAero').onclick=()=>$('aeroHelp').showModal();
+
+// The workshop can resize independently of the viewport when the replay opens.
+if (typeof ResizeObserver !== 'undefined') {
+ const carResize = new ResizeObserver(([entry]) => {
+  if (entry.contentRect.width && entry.contentRect.height) drawCar();
+ });
+ carResize.observe(car);
+}
