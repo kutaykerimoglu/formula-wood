@@ -45,6 +45,9 @@ function makeRenderer(canvas){
  faces.sort((a,b)=>a.z-b.z);for(let f of faces){ctx.beginPath();f.pts.forEach(([x,y],i)=>i?ctx.lineTo(x,y):ctx.moveTo(x,y));ctx.closePath();ctx.fillStyle=f.color;ctx.fill();
  if(f.hit){
   const {p,i,j}=f.hit,depth=s.cuts[p][i*ny+j];
+  if(s.wood==='Ash'||s.wood==='Birch'){
+   ctx.fillStyle=s.wood==='Ash'?'rgba(105,61,30,.34)':'rgba(255,245,208,.52)';ctx.fill();
+  }
   if(depth){ctx.fillStyle='rgba(100,53,20,'+Math.min(.49,.15+.032*depth)+')';ctx.fill();}
   if(tool?.part===p){
    ctx.fillStyle='rgba(255,221,120,.24)';ctx.fill();

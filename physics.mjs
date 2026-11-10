@@ -1,7 +1,7 @@
 export const parts=['Front wing','Nose','Sidepods','Rear wing','Diffuser'];
 export const nx=12,ny=10;
-export const blank=()=>({cuts:parts.map(()=>Array(nx*ny).fill(0)),angles:[6,8],pressure:[1,1],height:1,gurney:false});
-export function valid(s){return !!s&&Array.isArray(s.angles)&&s.angles.length===2&&s.angles.every(x=>Number.isInteger(x)&&x>=0&&x<=18)&&Array.isArray(s.cuts)&&s.cuts.length===parts.length&&Array.isArray(s.pressure)&&s.pressure.length===2&&s.pressure.every(level)&&level(s.height)&&typeof s.gurney==="boolean"&&s.cuts.every((a,p)=>Array.isArray(a)&&a.length===nx*ny&&a.every((x,i)=>Number.isInteger(x)&&x>=0&&x<=12&&(p===2||x===a[Math.floor(i/ny)*ny+ny-1-i%ny])));}
+export const blank=()=>({cuts:parts.map(()=>Array(nx*ny).fill(0)),angles:[6,8],pressure:[1,1],height:1,gurney:false,wood:"Maple"});
+export function valid(s){return !!s&&(s.wood===undefined||Object.hasOwn(woods,s.wood))&&Array.isArray(s.angles)&&s.angles.length===2&&s.angles.every(x=>Number.isInteger(x)&&x>=0&&x<=18)&&Array.isArray(s.cuts)&&s.cuts.length===parts.length&&Array.isArray(s.pressure)&&s.pressure.length===2&&s.pressure.every(level)&&level(s.height)&&typeof s.gurney==="boolean"&&s.cuts.every((a,p)=>Array.isArray(a)&&a.length===nx*ny&&a.every((x,i)=>Number.isInteger(x)&&x>=0&&x<=12&&(p===2||x===a[Math.floor(i/ny)*ny+ny-1-i%ny])));}
 function level(value){return Number.isInteger(value)&&value>=0&&value<=2;}
 
 // Tip cuts shorten the local span at each chord station, allowing a tapered outline.
@@ -9,6 +9,11 @@ export function spanFraction(setup,wing,station){
  const row=station*ny,depth=setup.cuts[wing];
  return 1-.34*(.7*depth[row]+.3*depth[row+1])/12;
 }
+export const woods={
+ Maple:{load:1,drag:1,description:'Balanced grain · stock drag and downforce'},
+ Ash:{load:1.14,drag:1.09,description:'Open grain · 14% more downforce, 9% more drag'},
+ Birch:{load:.89,drag:.91,description:'Fine grain · 9% less drag, 11% less downforce'}
+};
 export function aero(s){
  const avg=a=>a.reduce((v,n)=>v+n,0)/a.length;
  const cut=s.cuts.map(a=>avg(a)/12);
@@ -41,7 +46,12 @@ export function aero(s){
   floorLoad+=Math.max(0,expansion-.85*loss)/ny;
   separation+=loss/ny;
  }
- return {front:.00055*floorLoad+.0032*wings[0].load,rear:.0018*floorLoad+.0036*wings[1].load*(1+.17*taper-.23*cut[2]),drag:.0034+.00015*floorLoad+.0011*separation+.025*(wings[0].drag+wings[1].drag)-.00022*cut[1]-.00026*cut[2]+.00018*noseSlope,ballast:cut.reduce((a,v,i)=>a+v*[5,9,14,6,7][i],0)};
+ const result={front:.00055*floorLoad+.0032*wings[0].load,rear:.0018*floorLoad+.0036*wings[1].load*(1+.17*taper-.23*cut[2]),drag:.0034+.00015*floorLoad+.0011*separation+.025*(wings[0].drag+wings[1].drag)-.00022*cut[1]-.00026*cut[2]+.00018*noseSlope,ballast:cut.reduce((a,v,i)=>a+v*[5,9,14,6,7][i],0)};
+ const wood=woods[s.wood??'Maple'];
+ result.front*=wood.load;
+ result.rear*=wood.load;
+ result.drag*=wood.drag;
+ return result;
 }
 // Control points are in tabletop metres. Each bend rounds off a fraction of
 // its shorter adjacent leg, leaving the rest of each straight genuinely flat.

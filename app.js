@@ -61,7 +61,7 @@ function selectCircuit(next){
  if(id!==next){history=[];race=null;}
  id=next;
  data.track=id;
- switchTab('shop');
+ switchTab('shop');displaySlots();
  save();
  message('Drag the chisel across the selected surface.');
  window.scrollTo(0,0);
@@ -101,15 +101,47 @@ function showTracks(){
 }
 $('driver').value=data.name||'Guest driver';$('driver').onchange=e=>{data.name=e.target.value.trim().slice(0,20)||'Guest driver';e.target.value=data.name;save();};
 for(let i=0;i<2;i++){const wrap=document.createElement('div');wrap.className='row';const label=document.createElement('label');label.htmlFor='a'+i;label.textContent=i?'Rear':'Front';const slider=document.createElement('input');slider.type='range';slider.min=0;slider.max=18;slider.step=1;slider.id='a'+i;const out=document.createElement('output');out.id='val'+i;slider.oninput=()=>{setup().angles[i]=+slider.value;save();refresh();};wrap.append(label,slider,out);$('angles').append(wrap);}
-$('keepSetup').onclick=()=>{
- data[id].snapshot=structuredClone(setup());
- save();refresh();message('Comparison setup saved for '+names[id]+'.');
-};
-$('restoreSetup').onclick=()=>{
- if(!valid(data[id].snapshot))return;
- data[id].s=structuredClone(data[id].snapshot);
- history=[];hover=null;save();refresh();message('Comparison setup restored.');
-};
+// Bring the original comparison setup into the first named slot.
+for(const rec of Object.values(data)){
+ if(valid(rec?.snapshot)){
+  rec.slots??=[];
+  rec.slots[0]??={name:'Comparison setup',car:rec.snapshot};
+  delete rec.snapshot;
+  save();
+ }
+}
+$('wood').onchange=()=>{setup().wood=$('wood').value;save();refresh();};
+function loadSlot(track,index){
+ const slot=data[track]?.slots?.[index];
+ if(!valid(slot?.car))return;
+ data[track].s=structuredClone(slot.car);
+ history=[];hover=null;selectCircuit(track);message('Loaded '+slot.name+'.');
+}
+const slotControls=Array.from({length:3},(_,index)=>{
+ const row=document.createElement('div');row.className='slotRow';
+ const name=document.createElement('input');name.maxLength=28;
+ name.placeholder='Setup '+(index+1);name.setAttribute('aria-label',name.placeholder+' name');
+ const title=()=>name.value.trim().slice(0,28)||name.placeholder;
+ name.onchange=()=>{
+  const slot=data[id].slots?.[index];
+  if(slot){slot.name=title();name.value=slot.name;save();}
+ };
+ const keep=document.createElement('button'),load=document.createElement('button');
+ keep.onclick=()=>{
+  const rec=data[id];rec.slots??=[];
+  rec.slots[index]={name:title(),car:structuredClone(setup())};
+  save();displaySlots();message('Saved '+rec.slots[index].name+'.');
+ };
+ load.textContent='Load';load.onclick=()=>loadSlot(id,index);
+ row.append(name,keep,load);$('slots').append(row);
+ return {name,keep,load};
+});
+function displaySlots(){
+ slotControls.forEach(({name,keep,load},index)=>{
+  const slot=data[id]?.slots?.[index];
+  name.value=slot?.name||'';keep.textContent=slot?'Overwrite':'Save';load.disabled=!slot;
+ });
+}
 for(let axle=0;axle<2;axle++){
  const input=$('pressure'+axle);
  input.onchange=()=>{setup().pressure[axle]=Number(input.value);save();refresh();};
@@ -119,9 +151,8 @@ $('lip').onchange=()=>{setup().gurney=$('lip').checked;save();refresh();};
 function refresh(){const s=setup();
  s.pressure.forEach((value,axle)=>$('pressure'+axle).value=value);
  $('mount').value=s.height;$('lip').checked=s.gurney;
- const saved=valid(data[id].snapshot);
- $('restoreSetup').disabled=!saved;
- txt('keepSetup',saved?'Replace saved setup':'Save setup');drawCar();updateAero();$('undo').disabled=!history.length;s.angles.forEach((v,i)=>{$('a'+i).value=v;txt('val'+i,v+'°');});txt('ballast',aero(s).ballast.toFixed(2)+' g');txt('stock',fmt(lap(blank(),id).total));txt('best',data[id].best?fmt(data[id].best):'—');txt('length',lap(s,id).length.toFixed(1)+' m');txt('trackNum','Circuit '+String(id+1).padStart(2,'0')+' of 20 · '+profiles[id]);drawTrack($('map'),circuit(id));}
+ $('wood').value=s.wood??'Maple';txt('woodLabel','TF–01 / '+$('wood').value);txt('woodHint',woods[$('wood').value].description);
+ drawCar();updateAero();$('undo').disabled=!history.length;s.angles.forEach((v,i)=>{$('a'+i).value=v;txt('val'+i,v+'°');});txt('ballast',aero(s).ballast.toFixed(2)+' g');txt('stock',fmt(lap(blank(),id).total));txt('best',data[id].best?fmt(data[id].best):'—');txt('length',lap(s,id).length.toFixed(1)+' m');txt('trackNum','Circuit '+String(id+1).padStart(2,'0')+' of 20 · '+profiles[id]);drawTrack($('map'),circuit(id));}
 function setMode(m){mode=m;for(let v of ['orbit','chisel'])$(v).classList.toggle('chosen',v===m);hover=null;car.style.cursor=m==='orbit'?'grab':knifeCursor;updateCue();drawCar();message(m==='orbit'?'Drag to rotate the car.':'Drag the chisel across the selected surface.');}
 $('orbit').onclick=()=>setMode('orbit');$('chisel').onclick=()=>setMode('chisel');$('view').onchange=e=>{renderer.view(e.target.value);drawCar();};
 $('undo').onclick=()=>{if(history.length){setup().cuts=history.pop();save();refresh();message('Last stroke undone.');}};
@@ -206,7 +237,11 @@ function renderRace(){cancelAnimationFrame(frame);if(tab!=='race')return;txt('ra
 function start(){txt('raceInfo','');let s=structuredClone(setup());
  const rec=data[id],references={stock:cards[id].stock};
  if(valid(rec.previous))references.previous=lap(rec.previous,id);
- if(valid(rec.snapshot))references.saved=lap(rec.snapshot,id);
+ for(let i=0;i<3;i++){
+  const slot=rec.slots?.[i],opt=$('refSlot'+i);
+  opt.textContent=slot?.name||'Empty slot';opt.hidden=!slot;
+  if(valid(slot?.car))references['slot'+i]=lap(slot.car,id);
+ }
  $('reference').value=references.previous?'previous':'stock';
  $('sectorReport').classList.add('hidden');
  race={s,references,run:lap(s,id),ghost:lap(valid(data[id].ghost)?data[id].ghost:blank(),id),label:data[id].best?'personal best':'stock',elapsed:0,last:performance.now()};switchTab('race');}
@@ -240,7 +275,7 @@ function setupSummary(label,carSetup){
  const heading=document.createElement('strong');heading.textContent=label;
  const levels=['low','standard','high'];
  const description=document.createElement('p');
- description.textContent='Wings (F/R) '+carSetup.angles.join('° / ')+'° · Tyres '+carSetup.pressure.map(n=>levels[n]).join(' / ');
+ description.textContent=(carSetup.wood??'Maple')+' · Wings (F/R) '+carSetup.angles.join('° / ')+'° · Tyres '+carSetup.pressure.map(n=>levels[n]).join(' / ');
  const geometry=document.createElement('p');
  const surfaces=parts.filter((_,i)=>carSetup.cuts[i].some(Boolean));
  geometry.textContent=(surfaces.length?'Carved '+surfaces.join(', ').toLowerCase():'Stock carving')+' · '+['Low','Middle','High'][carSetup.height]+' front mount'+(carSetup.gurney?' · Gurney fitted':'');
@@ -252,12 +287,16 @@ function showLibrary(){
  names.forEach((name,track)=>{
   const rec=data[track];
   if(!valid(rec?.s))return;
-  const saved=valid(rec.snapshot),car=rec.s;
-  const customized=car.gurney||car.height!==factory.height||car.angles.some((n,i)=>n!==factory.angles[i])||car.pressure.some(n=>n!==1)||car.cuts.some(surface=>surface.some(Boolean));
+  const saved=rec.slots?.some(slot=>valid(slot?.car)),car=rec.s;
+  const customized=(car.wood??"Maple")!=="Maple"||car.gurney||car.height!==factory.height||car.angles.some((n,i)=>n!==factory.angles[i])||car.pressure.some(n=>n!==1)||car.cuts.some(surface=>surface.some(Boolean));
   if(!saved&&!customized)return;
   const card=document.createElement('article');card.className='libraryCard';
   const title=document.createElement('h2');title.textContent=name;card.append(title,setupSummary('Current setup',car));
-  if(saved)card.append(setupSummary('Saved comparison',rec.snapshot));
+  rec.slots?.forEach((slot,i)=>{
+   if(!valid(slot?.car))return;
+   const summary=setupSummary(slot.name,slot.car),load=document.createElement('button');
+   load.textContent='Load setup';load.onclick=()=>loadSlot(track,i);summary.append(load);card.append(summary);
+  });
   const open=document.createElement('button');open.textContent='Open track setup';open.onclick=()=>selectCircuit(track);card.append(open);list.append(card);
  });
  $('libraryEmpty').classList.toggle('hidden',list.children.length>0);
@@ -271,7 +310,7 @@ function switchTab(t){
  txt('title',({tracks:'Tracks',shop:names[id],race:'Lap view',library:'Workshop'})[t]);
  if(t==='tracks')showTracks();
  if(t==='library')showLibrary();
- if(t==='shop'){refresh();board();}
+ if(t==='shop'){refresh();displaySlots();board();}
  if(t==='race'){if(race)race.last=performance.now();renderRace();}
 }
 document.querySelectorAll('[data-tab],[data-go]').forEach(b=>b.onclick=()=>switchTab(b.dataset.tab||b.dataset.go));
