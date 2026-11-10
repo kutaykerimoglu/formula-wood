@@ -55,23 +55,24 @@ header b{font-size:26px}.cardBody strong{font-size:27px}.boardRow,.sessionTimes 
 .running .pitLayout{display:block}.pitLayout .boardRow{grid-template-columns:2.2em minmax(0,1fr) auto auto;gap:8px}
 @media(max-width:1040px){.pitLayout .workArea{display:block}.workstation .pitLayout .stage{height:240px;min-height:0;flex:none}.adjustments{border-left:0}}
 @media(max-width:740px){.pitLayout{display:flex;flex-direction:column}.pitLayout #board{order:-1}.pitLayout #scores{max-height:128px}.running.showBoard .pitLayout #scores{max-height:320px}}
+
+.profileStrip{display:flex;align-items:center;gap:12px 32px;flex-wrap:wrap;margin:12px 0;padding:10px 16px;border-block:1px solid #bec9b7}.profileStrip h2{font-size:18px}.profileStrip span{font-size:13px}.profileStrip b{margin-left:6px}.running .profileStrip,.running .runAction{display:none}.runAction{display:grid;text-align:right;gap:4px}.runAction small:empty{display:none}.boardRow.ownTime{background:#e2ecda;border-left:3px solid #366446}.boardRow.leaderRow{position:sticky;top:30px;background:#f4f0df}.boardRow.timingHead{z-index:1;height:30px}.cardRecord{display:block;margin-top:4px;font-size:13px;color:#445d4b}
 </style>
-<header><b><i>≋</i> Timber Formula</b><nav><button class="active" data-tab="tracks">Tracks</button><button data-tab="library">Workshop</button></nav></header>
+<header><b><i>≋</i> Timber Formula</b><nav><button class="active" data-tab="tracks">Tracks</button></nav></header>
 <main><div class="heading"><h1 id="title">Tracks</h1><span class="tag">1:12 · Tabletop series</span></div>
 <div id="trial" class="trial"><div><strong>Three-circuit challenge</strong><p>Beat the stock car on two circuits.</p></div><div id="trialTracks"></div><output id="trialScore"></output></div><section id="tracks" class="trackGrid" aria-label="Choose a circuit"></section>
-<section id="library" class="hidden" aria-label="Your track setups"><div id="libraryList" class="libraryGrid"></div><div id="libraryEmpty" class="panel"><h2>Your setup shelf is empty</h2><p>Choose a circuit and adjust its car or save a comparison setup.</p><button data-go="tracks">Choose a track</button></div></section>
 <section id="shop" class="workstation hidden" aria-label="Car workshop">
   <div class="sessionBar">
     <div class="circuitIdentity"><div><small id="trackNum"></small><b id="sessionMode">Track setup</b></div></div>
     <div class="sessionTimes"><div>Distance<b id="length"></b></div><div>Stock lap<b id="stock"></b></div><div>Best lap<b id="best"></b></div></div>
-    <button id="run" class="primary">▶ &nbsp; Run lap</button>
+    <div class="runAction"><small id="rankTarget"></small><button id="run" class="primary">▶ &nbsp; Run lap</button></div>
   </div>
   <div class="circuitStage"><canvas id="map" aria-label="Circuit map and lap replay"></canvas><div id="gapPanel" class="gapPanel hidden" aria-label="Lap timing comparison">
  <div><small id="gapPhase"></small><strong id="gapState"></strong></div>
  <div class="gapNumbers"><b id="gapTime"></b><small id="gapTarget"></small></div>
 </div></div>
 <div id="race" class="hidden"><div class="row"><span id="runSpec"></span><b class="mono" id="clock"></b></div><div id="sectorReport" class="hidden"><div class="reportTitle"><h3>Sector times</h3><label>Compare with <select id="reference"><option value="previous">Previous run</option><option value="stock">Stock car</option><option id="refSlot0" value="slot0">Slot 1</option><option id="refSlot1" value="slot1">Slot 2</option><option id="refSlot2" value="slot2">Slot 3</option></select></label></div><div class="splits" id="splits"></div><p id="lapBest" class="sub"></p></div><div class="tools"><strong id="raceInfo"></strong><div class="group"><button id="speed">1× speed</button><button id="again">Replay lap</button><button id="standings">Standings</button><button data-go="shop" class="chosen">Adjust setup</button></div></div></div>
-<div class="pitLayout"><div class="workArea">
+<section class="profileStrip" aria-label="Circuit profile"><h2>Circuit profile</h2><span>Longest straight <b id="longStraight"></b></span><span title="Stock minimum corner speed: slow below 2.5 m/s, fast from 4.5 m/s">Corners by stock speed <b id="cornerMix"></b></span></section><div class="pitLayout"><div class="workArea">
     <div class="carStation">
       <div class="stage"><canvas id="car" aria-label="Wooden formula car, drag to carve or orbit"></canvas><span class="cutCallout" id="cutCue"></span><small class="corner" id="woodLabel">TF–01 / Maple</small><select class="view" id="view" aria-label="Camera view"><option>Isometric</option><option>Top</option><option>Side</option><option>Underside</option><option>Front</option><option disabled>Free orbit</option></select></div>
       <div class="readout"><div class="readoutTitle"><div class="aeroHeading"><h3>Aero balance</h3><button id="helpAero" aria-label="Explain drag and downforce" aria-haspopup="dialog">?</button></div><small>vs stock · same speed</small></div>
@@ -176,6 +177,7 @@ const layouts = [
 const names=layouts.map(layout=>layout[0]);
 const profiles=layouts.map(layout=>layout[1]);
 const paths=new Map();
+const circuitFeatures = new Map();
 const distance=(a,b)=>Math.hypot(a[0]-b[0],a[1]-b[1]);
 const mix=(a,b,t)=>a.map((v,i)=>v+(b[i]-v)*t);
 function circuit(id){
@@ -187,13 +189,19 @@ function circuit(id){
   return {vertex,entry:mix(vertex,prev,trim/distance(prev,vertex)),exit:mix(vertex,next,trim/distance(vertex,next))};
  });
  const points=[];
+ const bends = [];
+ let longestStraight = 0;
  for(let i=0;i<n;i++){
   const current=corners[i],next=corners[(i+1)%n];
-  const steps=Math.ceil(distance(current.exit,next.entry)/.09);
+  const straightLength = distance(current.exit,next.entry);
+  longestStraight = Math.max(longestStraight,straightLength);
+  const steps=Math.ceil(straightLength/.09);
   for(let j=0;j<steps;j++)points.push(mix(current.exit,next.entry,j/steps));
   const bendSteps=Math.max(8,Math.ceil((distance(next.entry,next.vertex)+distance(next.vertex,next.exit))/.07));
+  bends.push([points.length,points.length+bendSteps]);
   for(let j=0;j<bendSteps;j++){const t=j/bendSteps;points.push(mix(mix(next.entry,next.vertex,t),mix(next.vertex,next.exit,t),t));}
  }
+ circuitFeatures.set(id,{longestStraight,bends});
  paths.set(id,points);return points;
 }
 function lap(s,id){
@@ -220,6 +228,16 @@ function lap(s,id){
  for(let i=n-1;i>=0;i--){const j=(i+1)%n;v[i]=Math.min(v[i],Math.sqrt(v[j]**2+2*10*dist[i]));}}
  const time=[0];for(let i=0;i<n;i++)time.push(time[i]+2*dist[i]/(v[i]+v[(i+1)%n]));
  return {p,v,time,total:time[n],length:dist.reduce((a,b)=>a+b)};
+}
+
+function circuitProfile(track, stockLap) {
+ const {longestStraight, bends} = circuitFeatures.get(track);
+ const counts = [0, 0, 0];
+ for (const [entry, exit] of bends) {
+  const speed = Math.min(...stockLap.v.slice(entry, exit));
+  counts[speed < 2.5 ? 0 : speed < 4.5 ? 1 : 2]++;
+ }
+ return {longestStraight, counts};
 }
 
 function makeRenderer(canvas){
@@ -358,8 +376,8 @@ function selectCircuit(next){
 const cards=names.map((name,i)=>{
  const button=document.createElement('button');
  button.className='trackCard';
- button.setAttribute('aria-label','Open '+name+' workshop');
- button.innerHTML='<canvas aria-hidden="true"></canvas><span class="cardBody"><small></small><strong></strong><span class="sub"></span></span>';
+ 
+ button.innerHTML='<canvas aria-hidden="true"></canvas><span class="cardBody"><small></small><strong></strong><span class="sub"></span><span class="cardRecord"></span></span>';
  button.querySelector('strong').textContent=name;
  button.querySelector('small').textContent='Circuit '+String(i+1).padStart(2,'0')+' · '+profiles[i];
  button.onclick=()=>selectCircuit(i);
@@ -385,7 +403,10 @@ function showTracks(){
  txt('trialScore',Math.min(beaten,2)+' / 2 beaten');
  cards.forEach(({button,points,stock},i)=>{
    drawTrack(button.querySelector('canvas'),points);
-   button.querySelector('.sub').textContent=stock.length.toFixed(1)+' m · '+(data[i]?.best?'Best '+fmt(data[i].best):'Stock '+fmt(stock.total));
+   button.querySelector('.sub').textContent=stock.length.toFixed(1)+' m · Stock '+fmt(stock.total);
+   const saved = data[i]?.slots?.filter(slot=>valid(slot?.car)).length || 0;
+   const record = [saved ? saved+' saved setup'+(saved===1?'':'s') : '', data[i]?.best ? 'PB '+fmt(data[i].best) : ''];
+   button.querySelector('.cardRecord').textContent = record.filter(Boolean).join(' · ');
  });
 }
 $('driver').value=data.name||'Guest driver';$('driver').onchange=e=>{data.name=e.target.value.trim().slice(0,20)||'Guest driver';e.target.value=data.name;save();};
@@ -461,7 +482,7 @@ car.onpointermove=e=>{
  if(!drag)return;let x=e.offsetX,y=e.offsetY,dx=x-drag.x,dy=y-drag.y;if(mode==='orbit'){renderer.turn(dx,dy);$('view').value='Free orbit';}else{const steps=Math.ceil(Math.hypot(dx,dy)/4);for(let i=1;i<=steps;i++)if(cut(drag.x+i*dx/steps,drag.y+i*dy/steps))drag.changed=true;}
  drag.x=x;drag.y=y;drawCar();if(drag.changed)updateAero();};
 car.onpointerup=car.onpointercancel=()=>{if(!drag)return;if(drag.changed){history.push(drag.before);if(history.length>60)history.shift();save();message('Mirrored shaving removed.');}else if(mode==='chisel')message('Drag across the '+parts[part].toLowerCase()+' to remove a shaving.');drag=null;hover=null;refresh();};
-function drawTrack(c,p,markers){const rect=c.getBoundingClientRect(),w=rect.width,h=rect.height;if(w<1||h<1)return;let dpr=Math.min(2,devicePixelRatio);c.width=w*dpr;c.height=h*dpr;let g=c.getContext('2d');g.scale(dpr,dpr);let xs=p.map(v=>v[0]),ys=p.map(v=>v[1]),minX=Math.min(...xs),maxX=Math.max(...xs),minY=Math.min(...ys),maxY=Math.max(...ys),k=.81*Math.min(w/(maxX-minX),h/(maxY-minY)),tr=([x,y])=>[(x-(minX+maxX)/2)*k+w/2,(y-(minY+maxY)/2)*k+h/2],q=p.map(tr);
+function drawTrack(c,p,markers,sectorGaps){const rect=c.getBoundingClientRect(),w=rect.width,h=rect.height;if(w<1||h<1)return;let dpr=Math.min(2,devicePixelRatio);c.width=w*dpr;c.height=h*dpr;let g=c.getContext('2d');g.scale(dpr,dpr);let xs=p.map(v=>v[0]),ys=p.map(v=>v[1]),minX=Math.min(...xs),maxX=Math.max(...xs),minY=Math.min(...ys),maxY=Math.max(...ys),k=.81*Math.min(w/(maxX-minX),h/(maxY-minY)),tr=([x,y])=>[(x-(minX+maxX)/2)*k+w/2,(y-(minY+maxY)/2)*k+h/2],q=p.map(tr);
  g.beginPath();q.forEach(([x,y],i)=>i?g.lineTo(x,y):g.moveTo(x,y));g.closePath();g.lineJoin='round';g.strokeStyle='#58664f';g.lineWidth=markers?Math.max(12,k*.34):2.5;g.stroke();if(!markers)return;g.lineWidth-=3;g.strokeStyle='#b5b4a0';g.stroke();g.lineWidth=1;g.setLineDash([4,8]);g.strokeStyle='#ede8d6';g.stroke();g.setLineDash([]);
  const bounds=sectorBounds(id);
  for(let sector=0;sector<3;sector++){
@@ -470,8 +491,13 @@ function drawTrack(c,p,markers){const rect=c.getBoundingClientRect(),w=rect.widt
   for(let i=from+1;i<=end;i++)g.lineTo(...q[i%q.length]);
   g.strokeStyle=sectorColors[sector];g.lineWidth=3;g.stroke();
   const [x,y]=q[Math.floor((from+end)/2)];
-  g.fillStyle=sectorColors[sector];g.fillRect(x-11,y-9,22,18);
-  g.font='bold 11px monospace';g.fillStyle='#fff';g.textAlign='center';g.fillText('S'+(sector+1),x,y+4);
+  const gap = sectorGaps?.[sector];
+  const label = 'S'+(sector+1)+(gap===undefined?'':' '+(gap>0?'+':'')+gap.toFixed(3)+' s');
+  const halfWidth = gap===undefined?11:49;
+  const center = Math.max(halfWidth,Math.min(w-halfWidth,x));
+  g.fillStyle=gap===undefined||Math.abs(gap)<.0005?sectorColors[sector]:gap<0?'#12623e':'#962f38';
+  g.fillRect(center-halfWidth,y-9,halfWidth*2,18);
+  g.font='bold 11px monospace';g.fillStyle='#fff';g.textAlign='center';g.fillText(label,center,y+4);
  }
  const bearing=i=>Math.atan2(q[(i+1)%q.length][1]-q[i][1],q[(i+1)%q.length][0]-q[i][0]);g.save();g.translate(...q[0]);g.rotate(bearing(0));for(let j=-3;j<3;j++)for(let i=0;i<2;i++){g.fillStyle=(i+j)%2?'#faf6e8':'#334636';g.fillRect(i*3,j*3,3,3);}g.restore();
  for(let m of markers){let i=Math.min(q.length-1,Math.floor(m.progress)),f=m.progress-i,next=q[(i+1)%q.length];g.save();g.translate(q[i][0]*(1-f)+next[0]*f,q[i][1]*(1-f)+next[1]*f);g.rotate(bearing(i));g.globalAlpha=m.ghost?.55:1;g.fillStyle=m.ghost?'#fff':'#26382d';for(let x of [-6,3])for(let y of [-6,3])g.fillRect(x,y,4,3);g.fillStyle=m.ghost?'#fff':'#c58543';g.fillRect(-7,-3,14,6);g.fillRect(6,-5,2,10);g.restore();}}
@@ -492,16 +518,19 @@ function showReport(){
  for(const option of options)option.disabled=!race.references[option.value];
  const reference=race.references[$('reference').value];
  const bounds=sectorBounds(id),splits=$('splits');
+ const sectorGaps = [];
  splits.replaceChildren();
  for(let i=0;i<3;i++){
   const duration=l=>l.time[bounds[i+1]]-l.time[bounds[i]];
   const time=duration(race.run),gap=time-duration(reference);
+  sectorGaps.push(gap);
   const cell=document.createElement('div');
   cell.style.setProperty('--ink',sectorColors[i]);
   cell.innerHTML='<small>Sector '+(i+1)+'</small><b>'+fmt(time)+'</b><output>'+
     (Math.abs(gap)<.0005?'Even':fmt(Math.abs(gap))+(gap<0?' gained':' lost'))+'</output>';
   splits.append(cell);
  }
+ drawTrack($('map'),race.run.p,[{progress:race.run.p.length}],sectorGaps);
  txt('lapBest','Personal best · '+fmt(data[id].best));
  $('sectorReport').classList.remove('hidden');
 }
@@ -550,9 +579,10 @@ async function submit(completed,track){
 let boardRequest=0;
 async function board(){
  const track=id,request=++boardRequest,scores=$('scores');
+ txt('rankTarget','');
  txt('scores','Loading times…');
  try{
-  const response=await fetch('/api/v3/scores/'+track);
+  const response=await fetch('/api/v3/scores/'+track+'?personal=1');
   if(!response.ok)throw Error();
   const rows=await response.json();
   if(!Array.isArray(rows))throw Error();
@@ -567,11 +597,16 @@ async function board(){
    }
    scores.append(header);
   }
+  const mine = rows.find(row=>row.isMine);
+  const rival = mine && rows.find(row=>row.position===mine.position-1);
+  if(rival)txt('rankTarget',fmt(mine.time-rival.time)+' to P'+rival.position);
+  else if(mine)txt('rankTarget','P1 · '+fmt(mine.time));
+  else if(rows.length)txt('rankTarget','P1 · '+fmt(rows[0].time));
   rows.forEach((row,index)=>{
    const line=document.createElement('div');
-   line.className='boardRow';
+   line.className='boardRow'+(row.isMine?' ownTime':'')+(index===0?' leaderRow':'');
    const gap=index===0?'—':'+'+fmt(row.time-rows[0].time);
-   for(const value of ['P'+(index+1),row.name,fmt(row.time),gap]){
+   for(const value of ['P'+(row.position??index+1),row.name+(row.isMine?' · You':''),fmt(row.time),gap]){
     const field=document.createElement('span');field.textContent=value;line.append(field);
    }
    scores.append(line);
@@ -580,37 +615,6 @@ async function board(){
   if(request===boardRequest&&id===track&&['shop','race'].includes(tab))txt('scores','Online leaderboard unavailable.');
  }
 }
-function setupSummary(label,carSetup){
- const section=document.createElement('div');section.className='setupSummary';
- const heading=document.createElement('strong');heading.textContent=label;
- const levels=['low','standard','high'];
- const description=document.createElement('p');
- description.textContent=(carSetup.wood??'Maple')+' · Wings (F/R) '+carSetup.angles.join('° / ')+'° · Tyres '+carSetup.pressure.map(n=>levels[n]).join(' / ');
- const geometry=document.createElement('p');
- const surfaces=parts.filter((_,i)=>carSetup.cuts[i].some(Boolean));
- geometry.textContent=(surfaces.length?'Carved '+surfaces.join(', ').toLowerCase():'Stock carving')+' · '+['Low','Middle','High'][carSetup.height]+' front mount'+(carSetup.gurney?' · Gurney fitted':'');
- section.append(heading,description,geometry);return section;
-}
-function showLibrary(){
- const list=$('libraryList');list.replaceChildren();
- const factory=blank();
- names.forEach((name,track)=>{
-  const rec=data[track];
-  if(!valid(rec?.s))return;
-  const saved=rec.slots?.some(slot=>valid(slot?.car)),car=rec.s;
-  const customized=(car.wood??"Maple")!=="Maple"||car.gurney||car.height!==factory.height||car.angles.some((n,i)=>n!==factory.angles[i])||car.pressure.some(n=>n!==1)||car.cuts.some(surface=>surface.some(Boolean));
-  if(!saved&&!customized)return;
-  const card=document.createElement('article');card.className='libraryCard';
-  const title=document.createElement('h2');title.textContent=name;card.append(title,setupSummary('Current setup',car));
-  rec.slots?.forEach((slot,i)=>{
-   if(!valid(slot?.car))return;
-   const summary=setupSummary(slot.name,slot.car),load=document.createElement('button');
-   load.textContent='Load setup';load.onclick=()=>loadSlot(track,i);summary.append(load);card.append(summary);
-  });
-  const open=document.createElement('button');open.textContent='Open track setup';open.onclick=()=>selectCircuit(track);card.append(open);list.append(card);
- });
- $('libraryEmpty').classList.toggle('hidden',list.children.length>0);
-}
 function switchTab(t){
  tab=t;
  $('trial').classList.toggle('hidden',t!=='tracks');
@@ -618,11 +622,15 @@ function switchTab(t){
  const active=['race','shop'].includes(t)?'tracks':t;
  $('shop').classList.toggle('running',t==='race');$('shop').classList.remove('showBoard');$('gapPanel').classList.add('hidden');
  document.querySelectorAll('header button').forEach(b=>b.classList.toggle('active',b.dataset.tab===active));
- for(const view of ['tracks','shop','race','library'])$(view).classList.toggle('hidden',view!==t&&!(view==='shop'&&t==='race'));
- txt('title',({tracks:'Tracks',shop:names[id],race:names[id],library:'Workshop'})[t]);
+ for(const view of ['tracks','shop','race'])$(view).classList.toggle('hidden',view!==t&&!(view==='shop'&&t==='race'));
+ txt('title',({tracks:'Tracks',shop:names[id],race:names[id]})[t]);
  if(t==='tracks')showTracks();
- if(t==='library')showLibrary();
- if(t==='shop'){cancelAnimationFrame(frame);refresh();displaySlots();board();}
+
+ if(t==='shop'){
+  const profile = circuitProfile(id,cards[id].stock);
+  txt('longStraight',profile.longestStraight.toFixed(1)+' m');
+  txt('cornerMix',profile.counts.map((count,index)=>count+' '+['slow','medium','fast'][index]).join(' · '));
+  cancelAnimationFrame(frame);refresh();displaySlots();board();}
  if(t==='race'){if(race)race.last=performance.now();renderRace();}
 }
 document.querySelectorAll('[data-tab],[data-go]').forEach(b=>b.onclick=()=>switchTab(b.dataset.tab||b.dataset.go));

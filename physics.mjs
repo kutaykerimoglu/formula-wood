@@ -80,6 +80,7 @@ const layouts = [
 export const names=layouts.map(layout=>layout[0]);
 export const profiles=layouts.map(layout=>layout[1]);
 const paths=new Map();
+const circuitFeatures = new Map();
 const distance=(a,b)=>Math.hypot(a[0]-b[0],a[1]-b[1]);
 const mix=(a,b,t)=>a.map((v,i)=>v+(b[i]-v)*t);
 export function circuit(id){
@@ -91,13 +92,19 @@ export function circuit(id){
   return {vertex,entry:mix(vertex,prev,trim/distance(prev,vertex)),exit:mix(vertex,next,trim/distance(vertex,next))};
  });
  const points=[];
+ const bends = [];
+ let longestStraight = 0;
  for(let i=0;i<n;i++){
   const current=corners[i],next=corners[(i+1)%n];
-  const steps=Math.ceil(distance(current.exit,next.entry)/.09);
+  const straightLength = distance(current.exit,next.entry);
+  longestStraight = Math.max(longestStraight,straightLength);
+  const steps=Math.ceil(straightLength/.09);
   for(let j=0;j<steps;j++)points.push(mix(current.exit,next.entry,j/steps));
   const bendSteps=Math.max(8,Math.ceil((distance(next.entry,next.vertex)+distance(next.vertex,next.exit))/.07));
+  bends.push([points.length,points.length+bendSteps]);
   for(let j=0;j<bendSteps;j++){const t=j/bendSteps;points.push(mix(mix(next.entry,next.vertex,t),mix(next.vertex,next.exit,t),t));}
  }
+ circuitFeatures.set(id,{longestStraight,bends});
  paths.set(id,points);return points;
 }
 export function lap(s,id){
@@ -124,4 +131,14 @@ export function lap(s,id){
  for(let i=n-1;i>=0;i--){const j=(i+1)%n;v[i]=Math.min(v[i],Math.sqrt(v[j]**2+2*10*dist[i]));}}
  const time=[0];for(let i=0;i<n;i++)time.push(time[i]+2*dist[i]/(v[i]+v[(i+1)%n]));
  return {p,v,time,total:time[n],length:dist.reduce((a,b)=>a+b)};
+}
+
+export function circuitProfile(track, stockLap) {
+ const {longestStraight, bends} = circuitFeatures.get(track);
+ const counts = [0, 0, 0];
+ for (const [entry, exit] of bends) {
+  const speed = Math.min(...stockLap.v.slice(entry, exit));
+  counts[speed < 2.5 ? 0 : speed < 4.5 ? 1 : 2]++;
+ }
+ return {longestStraight, counts};
 }

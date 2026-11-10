@@ -4,6 +4,17 @@ export default {async fetch(req,env){
  const track=Number(api[1]);if(track>=names.length)return new Response('Unknown track',{status:404});
  const courseKey=2000+track;
  const existing=req.headers.get('cookie')?.match(/(?:^|; )tfdriver=([a-f0-9-]{36})(?:;|$)/)?.[1];
+ if(req.method==='GET' && url.searchParams.has('personal')){
+  const query = `WITH ranked AS (
+   SELECT name,time,player,ROW_NUMBER() OVER (ORDER BY time,player) AS position
+   FROM scores WHERE track=?
+  ), mine AS (SELECT position FROM ranked WHERE player=?)
+  SELECT name,time,position,player=? AS isMine FROM ranked
+  WHERE position<=100 OR position IN (SELECT position FROM mine UNION SELECT position-1 FROM mine)
+  ORDER BY position`;
+  const rows=await env.DB.prepare(query).bind(courseKey,existing||'',existing||'').all();
+  return Response.json(rows.results,{headers:{'cache-control':'private, no-store'}});
+ }
  if(req.method==='GET')return Response.json((await env.DB.prepare('SELECT name,time FROM scores WHERE track=? ORDER BY time,player LIMIT 100').bind(courseKey).all()).results,{headers:{'cache-control':'no-store'}});
  if(req.method!=='POST')return new Response('Unsupported method',{status:405});
  if(req.headers.get('origin')!==url.origin)return new Response('Invalid origin',{status:403});

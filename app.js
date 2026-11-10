@@ -69,8 +69,8 @@ function selectCircuit(next){
 const cards=names.map((name,i)=>{
  const button=document.createElement('button');
  button.className='trackCard';
- button.setAttribute('aria-label','Open '+name+' workshop');
- button.innerHTML='<canvas aria-hidden="true"></canvas><span class="cardBody"><small></small><strong></strong><span class="sub"></span></span>';
+ 
+ button.innerHTML='<canvas aria-hidden="true"></canvas><span class="cardBody"><small></small><strong></strong><span class="sub"></span><span class="cardRecord"></span></span>';
  button.querySelector('strong').textContent=name;
  button.querySelector('small').textContent='Circuit '+String(i+1).padStart(2,'0')+' · '+profiles[i];
  button.onclick=()=>selectCircuit(i);
@@ -96,7 +96,10 @@ function showTracks(){
  txt('trialScore',Math.min(beaten,2)+' / 2 beaten');
  cards.forEach(({button,points,stock},i)=>{
    drawTrack(button.querySelector('canvas'),points);
-   button.querySelector('.sub').textContent=stock.length.toFixed(1)+' m · '+(data[i]?.best?'Best '+fmt(data[i].best):'Stock '+fmt(stock.total));
+   button.querySelector('.sub').textContent=stock.length.toFixed(1)+' m · Stock '+fmt(stock.total);
+   const saved = data[i]?.slots?.filter(slot=>valid(slot?.car)).length || 0;
+   const record = [saved ? saved+' saved setup'+(saved===1?'':'s') : '', data[i]?.best ? 'PB '+fmt(data[i].best) : ''];
+   button.querySelector('.cardRecord').textContent = record.filter(Boolean).join(' · ');
  });
 }
 $('driver').value=data.name||'Guest driver';$('driver').onchange=e=>{data.name=e.target.value.trim().slice(0,20)||'Guest driver';e.target.value=data.name;save();};
@@ -172,7 +175,7 @@ car.onpointermove=e=>{
  if(!drag)return;let x=e.offsetX,y=e.offsetY,dx=x-drag.x,dy=y-drag.y;if(mode==='orbit'){renderer.turn(dx,dy);$('view').value='Free orbit';}else{const steps=Math.ceil(Math.hypot(dx,dy)/4);for(let i=1;i<=steps;i++)if(cut(drag.x+i*dx/steps,drag.y+i*dy/steps))drag.changed=true;}
  drag.x=x;drag.y=y;drawCar();if(drag.changed)updateAero();};
 car.onpointerup=car.onpointercancel=()=>{if(!drag)return;if(drag.changed){history.push(drag.before);if(history.length>60)history.shift();save();message('Mirrored shaving removed.');}else if(mode==='chisel')message('Drag across the '+parts[part].toLowerCase()+' to remove a shaving.');drag=null;hover=null;refresh();};
-function drawTrack(c,p,markers){const rect=c.getBoundingClientRect(),w=rect.width,h=rect.height;if(w<1||h<1)return;let dpr=Math.min(2,devicePixelRatio);c.width=w*dpr;c.height=h*dpr;let g=c.getContext('2d');g.scale(dpr,dpr);let xs=p.map(v=>v[0]),ys=p.map(v=>v[1]),minX=Math.min(...xs),maxX=Math.max(...xs),minY=Math.min(...ys),maxY=Math.max(...ys),k=.81*Math.min(w/(maxX-minX),h/(maxY-minY)),tr=([x,y])=>[(x-(minX+maxX)/2)*k+w/2,(y-(minY+maxY)/2)*k+h/2],q=p.map(tr);
+function drawTrack(c,p,markers,sectorGaps){const rect=c.getBoundingClientRect(),w=rect.width,h=rect.height;if(w<1||h<1)return;let dpr=Math.min(2,devicePixelRatio);c.width=w*dpr;c.height=h*dpr;let g=c.getContext('2d');g.scale(dpr,dpr);let xs=p.map(v=>v[0]),ys=p.map(v=>v[1]),minX=Math.min(...xs),maxX=Math.max(...xs),minY=Math.min(...ys),maxY=Math.max(...ys),k=.81*Math.min(w/(maxX-minX),h/(maxY-minY)),tr=([x,y])=>[(x-(minX+maxX)/2)*k+w/2,(y-(minY+maxY)/2)*k+h/2],q=p.map(tr);
  g.beginPath();q.forEach(([x,y],i)=>i?g.lineTo(x,y):g.moveTo(x,y));g.closePath();g.lineJoin='round';g.strokeStyle='#58664f';g.lineWidth=markers?Math.max(12,k*.34):2.5;g.stroke();if(!markers)return;g.lineWidth-=3;g.strokeStyle='#b5b4a0';g.stroke();g.lineWidth=1;g.setLineDash([4,8]);g.strokeStyle='#ede8d6';g.stroke();g.setLineDash([]);
  const bounds=sectorBounds(id);
  for(let sector=0;sector<3;sector++){
@@ -181,8 +184,13 @@ function drawTrack(c,p,markers){const rect=c.getBoundingClientRect(),w=rect.widt
   for(let i=from+1;i<=end;i++)g.lineTo(...q[i%q.length]);
   g.strokeStyle=sectorColors[sector];g.lineWidth=3;g.stroke();
   const [x,y]=q[Math.floor((from+end)/2)];
-  g.fillStyle=sectorColors[sector];g.fillRect(x-11,y-9,22,18);
-  g.font='bold 11px monospace';g.fillStyle='#fff';g.textAlign='center';g.fillText('S'+(sector+1),x,y+4);
+  const gap = sectorGaps?.[sector];
+  const label = 'S'+(sector+1)+(gap===undefined?'':' '+(gap>0?'+':'')+gap.toFixed(3)+' s');
+  const halfWidth = gap===undefined?11:49;
+  const center = Math.max(halfWidth,Math.min(w-halfWidth,x));
+  g.fillStyle=gap===undefined||Math.abs(gap)<.0005?sectorColors[sector]:gap<0?'#12623e':'#962f38';
+  g.fillRect(center-halfWidth,y-9,halfWidth*2,18);
+  g.font='bold 11px monospace';g.fillStyle='#fff';g.textAlign='center';g.fillText(label,center,y+4);
  }
  const bearing=i=>Math.atan2(q[(i+1)%q.length][1]-q[i][1],q[(i+1)%q.length][0]-q[i][0]);g.save();g.translate(...q[0]);g.rotate(bearing(0));for(let j=-3;j<3;j++)for(let i=0;i<2;i++){g.fillStyle=(i+j)%2?'#faf6e8':'#334636';g.fillRect(i*3,j*3,3,3);}g.restore();
  for(let m of markers){let i=Math.min(q.length-1,Math.floor(m.progress)),f=m.progress-i,next=q[(i+1)%q.length];g.save();g.translate(q[i][0]*(1-f)+next[0]*f,q[i][1]*(1-f)+next[1]*f);g.rotate(bearing(i));g.globalAlpha=m.ghost?.55:1;g.fillStyle=m.ghost?'#fff':'#26382d';for(let x of [-6,3])for(let y of [-6,3])g.fillRect(x,y,4,3);g.fillStyle=m.ghost?'#fff':'#c58543';g.fillRect(-7,-3,14,6);g.fillRect(6,-5,2,10);g.restore();}}
@@ -203,16 +211,19 @@ function showReport(){
  for(const option of options)option.disabled=!race.references[option.value];
  const reference=race.references[$('reference').value];
  const bounds=sectorBounds(id),splits=$('splits');
+ const sectorGaps = [];
  splits.replaceChildren();
  for(let i=0;i<3;i++){
   const duration=l=>l.time[bounds[i+1]]-l.time[bounds[i]];
   const time=duration(race.run),gap=time-duration(reference);
+  sectorGaps.push(gap);
   const cell=document.createElement('div');
   cell.style.setProperty('--ink',sectorColors[i]);
   cell.innerHTML='<small>Sector '+(i+1)+'</small><b>'+fmt(time)+'</b><output>'+
     (Math.abs(gap)<.0005?'Even':fmt(Math.abs(gap))+(gap<0?' gained':' lost'))+'</output>';
   splits.append(cell);
  }
+ drawTrack($('map'),race.run.p,[{progress:race.run.p.length}],sectorGaps);
  txt('lapBest','Personal best · '+fmt(data[id].best));
  $('sectorReport').classList.remove('hidden');
 }
@@ -261,9 +272,10 @@ async function submit(completed,track){
 let boardRequest=0;
 async function board(){
  const track=id,request=++boardRequest,scores=$('scores');
+ txt('rankTarget','');
  txt('scores','Loading times…');
  try{
-  const response=await fetch('/api/v3/scores/'+track);
+  const response=await fetch('/api/v3/scores/'+track+'?personal=1');
   if(!response.ok)throw Error();
   const rows=await response.json();
   if(!Array.isArray(rows))throw Error();
@@ -278,11 +290,16 @@ async function board(){
    }
    scores.append(header);
   }
+  const mine = rows.find(row=>row.isMine);
+  const rival = mine && rows.find(row=>row.position===mine.position-1);
+  if(rival)txt('rankTarget',fmt(mine.time-rival.time)+' to P'+rival.position);
+  else if(mine)txt('rankTarget','P1 · '+fmt(mine.time));
+  else if(rows.length)txt('rankTarget','P1 · '+fmt(rows[0].time));
   rows.forEach((row,index)=>{
    const line=document.createElement('div');
-   line.className='boardRow';
+   line.className='boardRow'+(row.isMine?' ownTime':'')+(index===0?' leaderRow':'');
    const gap=index===0?'—':'+'+fmt(row.time-rows[0].time);
-   for(const value of ['P'+(index+1),row.name,fmt(row.time),gap]){
+   for(const value of ['P'+(row.position??index+1),row.name+(row.isMine?' · You':''),fmt(row.time),gap]){
     const field=document.createElement('span');field.textContent=value;line.append(field);
    }
    scores.append(line);
@@ -291,37 +308,6 @@ async function board(){
   if(request===boardRequest&&id===track&&['shop','race'].includes(tab))txt('scores','Online leaderboard unavailable.');
  }
 }
-function setupSummary(label,carSetup){
- const section=document.createElement('div');section.className='setupSummary';
- const heading=document.createElement('strong');heading.textContent=label;
- const levels=['low','standard','high'];
- const description=document.createElement('p');
- description.textContent=(carSetup.wood??'Maple')+' · Wings (F/R) '+carSetup.angles.join('° / ')+'° · Tyres '+carSetup.pressure.map(n=>levels[n]).join(' / ');
- const geometry=document.createElement('p');
- const surfaces=parts.filter((_,i)=>carSetup.cuts[i].some(Boolean));
- geometry.textContent=(surfaces.length?'Carved '+surfaces.join(', ').toLowerCase():'Stock carving')+' · '+['Low','Middle','High'][carSetup.height]+' front mount'+(carSetup.gurney?' · Gurney fitted':'');
- section.append(heading,description,geometry);return section;
-}
-function showLibrary(){
- const list=$('libraryList');list.replaceChildren();
- const factory=blank();
- names.forEach((name,track)=>{
-  const rec=data[track];
-  if(!valid(rec?.s))return;
-  const saved=rec.slots?.some(slot=>valid(slot?.car)),car=rec.s;
-  const customized=(car.wood??"Maple")!=="Maple"||car.gurney||car.height!==factory.height||car.angles.some((n,i)=>n!==factory.angles[i])||car.pressure.some(n=>n!==1)||car.cuts.some(surface=>surface.some(Boolean));
-  if(!saved&&!customized)return;
-  const card=document.createElement('article');card.className='libraryCard';
-  const title=document.createElement('h2');title.textContent=name;card.append(title,setupSummary('Current setup',car));
-  rec.slots?.forEach((slot,i)=>{
-   if(!valid(slot?.car))return;
-   const summary=setupSummary(slot.name,slot.car),load=document.createElement('button');
-   load.textContent='Load setup';load.onclick=()=>loadSlot(track,i);summary.append(load);card.append(summary);
-  });
-  const open=document.createElement('button');open.textContent='Open track setup';open.onclick=()=>selectCircuit(track);card.append(open);list.append(card);
- });
- $('libraryEmpty').classList.toggle('hidden',list.children.length>0);
-}
 function switchTab(t){
  tab=t;
  $('trial').classList.toggle('hidden',t!=='tracks');
@@ -329,11 +315,15 @@ function switchTab(t){
  const active=['race','shop'].includes(t)?'tracks':t;
  $('shop').classList.toggle('running',t==='race');$('shop').classList.remove('showBoard');$('gapPanel').classList.add('hidden');
  document.querySelectorAll('header button').forEach(b=>b.classList.toggle('active',b.dataset.tab===active));
- for(const view of ['tracks','shop','race','library'])$(view).classList.toggle('hidden',view!==t&&!(view==='shop'&&t==='race'));
- txt('title',({tracks:'Tracks',shop:names[id],race:names[id],library:'Workshop'})[t]);
+ for(const view of ['tracks','shop','race'])$(view).classList.toggle('hidden',view!==t&&!(view==='shop'&&t==='race'));
+ txt('title',({tracks:'Tracks',shop:names[id],race:names[id]})[t]);
  if(t==='tracks')showTracks();
- if(t==='library')showLibrary();
- if(t==='shop'){cancelAnimationFrame(frame);refresh();displaySlots();board();}
+
+ if(t==='shop'){
+  const profile = circuitProfile(id,cards[id].stock);
+  txt('longStraight',profile.longestStraight.toFixed(1)+' m');
+  txt('cornerMix',profile.counts.map((count,index)=>count+' '+['slow','medium','fast'][index]).join(' · '));
+  cancelAnimationFrame(frame);refresh();displaySlots();board();}
  if(t==='race'){if(race)race.last=performance.now();renderRace();}
 }
 document.querySelectorAll('[data-tab],[data-go]').forEach(b=>b.onclick=()=>switchTab(b.dataset.tab||b.dataset.go));
