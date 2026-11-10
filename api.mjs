@@ -11,5 +11,6 @@ export default {async fetch(req,env){
  if(!valid(body?.s)||typeof body.name!=='string')return new Response('Invalid setup',{status:400});
  const player=existing||crypto.randomUUID(),name=body.name.trim().slice(0,20)||'Guest driver',time=lap(body.s,track).total;
  await env.DB.prepare('INSERT INTO scores(track,player,name,time) VALUES(?,?,?,?) ON CONFLICT(track,player) DO UPDATE SET name=excluded.name,time=excluded.time WHERE excluded.time<scores.time').bind(courseKey,player,name,time).run();
- return Response.json({time},{headers:{'set-cookie':'tfdriver='+player+'; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=31536000'}});
+ const ranking=await env.DB.prepare('SELECT position,time-leader AS gap FROM (SELECT player,time,ROW_NUMBER() OVER (ORDER BY time,player) AS position,MIN(time) OVER () AS leader FROM scores WHERE track=?) WHERE player=?').bind(courseKey,player).all();
+ return Response.json({time,...ranking.results[0]},{headers:{'set-cookie':'tfdriver='+player+'; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=31536000'}});
 }};

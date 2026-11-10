@@ -230,11 +230,12 @@ function showGap(seconds,finished,target){
  txt('gapTime',sign+(ms/1000).toFixed(3)+' s');
  txt('gapTarget','vs '+target);
 }
-function renderRace(){cancelAnimationFrame(frame);if(tab!=='race')return;txt('raceName',names[id]);if(!race){$('gapPanel').classList.add('hidden');$('sectorReport').classList.add('hidden');drawTrack($('raceMap'),circuit(id),[]);txt('clock','0.000 s');txt('raceInfo','Ready on the grid');return;}
+function renderRace(){cancelAnimationFrame(frame);if(tab!=='race')return;if(!race){$('gapPanel').classList.add('hidden');$('sectorReport').classList.add('hidden');drawTrack($('map'),circuit(id),[]);txt('clock','0.000 s');txt('raceInfo','Ready on the grid');return;}
  let now=performance.now();race.elapsed=Math.min(race.run.total,race.elapsed+(now-race.last)*rate/1000);race.last=now;const t=race.elapsed,r=race.run,g=race.ghost,pos=progress(r,t),idx=Math.min(r.p.length-1,Math.floor(pos)),gt=g.time[idx]+(pos-idx)*(g.time[idx+1]-g.time[idx]),gap=t-gt;
- drawTrack($('raceMap'),r.p,[{progress:progress(g,t),ghost:true},{progress:pos}]);txt('clock',fmt(t));showGap(gap,t>=r.total,race.label);
- if(t<r.total){frame=requestAnimationFrame(renderRace);return;}if(!race.finished){race.finished=true;const rec=data[id];if(!rec.best||r.total<rec.best){rec.best=r.total;rec.ghost=race.s;}rec.previous=race.s;save();showReport();submit(race.s,id);}}
-function start(){txt('raceInfo','');let s=structuredClone(setup());
+ drawTrack($('map'),r.p,[{progress:progress(g,t),ghost:true},{progress:pos}]);txt('clock',fmt(t));showGap(gap,t>=r.total,race.label);
+ if(t<r.total){frame=requestAnimationFrame(renderRace);return;}$('again').disabled=false;
+ if(!race.finished){race.finished=true;const rec=data[id];if(!rec.best||r.total<rec.best){rec.best=r.total;rec.ghost=race.s;}rec.previous=race.s;save();submit(race,id);}showReport();}
+function start(){$('again').disabled=true;txt('raceInfo','');let s=structuredClone(setup());
  const rec=data[id],references={stock:cards[id].stock};
  if(valid(rec.previous))references.previous=lap(rec.previous,id);
  for(let i=0;i<3;i++){
@@ -244,8 +245,19 @@ function start(){txt('raceInfo','');let s=structuredClone(setup());
  }
  $('reference').value=references.previous?'previous':'stock';
  $('sectorReport').classList.add('hidden');
- race={s,references,run:lap(s,id),ghost:lap(valid(data[id].ghost)?data[id].ghost:blank(),id),label:data[id].best?'personal best':'stock',elapsed:0,last:performance.now()};switchTab('race');}
-async function submit(s,track){if(location.protocol==='file:')return;try{let res=await fetch('/api/v3/scores/'+track,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({s,name:data.name||'Guest driver'})});if(!res.ok)throw Error();if(tab==='shop'&&track===id)board();}catch{if(tab==='race')$('raceInfo').textContent+=' · Online submission unavailable';}}
+ race={s,references,run:lap(s,id),ghost:lap(valid(data[id].ghost)?data[id].ghost:blank(),id),label:data[id].best?'personal best':'stock',elapsed:0,last:performance.now()};txt('runSpec',(s.wood??'Maple')+' · Wings '+s.angles.join('° / ')+'° · Tyres '+s.pressure.map(v=>['low','standard','high'][v]).join(' / '));switchTab('race');}
+async function submit(completed,track){
+ if(location.protocol==='file:'){txt('raceInfo','Local lap');return;}
+ txt('raceInfo','Confirming position…');
+ try{
+  const response=await fetch('/api/v3/scores/'+track,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({s:completed.s,name:data.name||'Guest driver'})});
+  if(!response.ok)throw Error();
+  const result=await response.json();
+  if(track!==id||race!==completed)return;
+  txt('raceInfo','Personal best · P'+result.position+' · '+(result.position===1?'Leader':'+'+fmt(result.gap)+' to P1'));
+  board();
+ }catch{if(race===completed)txt('raceInfo','Online submission unavailable');}
+}
 let boardRequest=0;
 async function board(){
  const track=id,request=++boardRequest,scores=$('scores');
@@ -255,7 +267,7 @@ async function board(){
   if(!response.ok)throw Error();
   const rows=await response.json();
   if(!Array.isArray(rows))throw Error();
-  if(request!==boardRequest||id!==track||tab!=='shop')return;
+  if(request!==boardRequest||id!==track||!['shop','race'].includes(tab))return;
   scores.replaceChildren();
   if(!rows.length)txt('scores','Be the first to record a lap.');
   if(rows.length){
@@ -276,7 +288,7 @@ async function board(){
    scores.append(line);
   });
  }catch{
-  if(request===boardRequest&&id===track&&tab==='shop')txt('scores','Online leaderboard unavailable.');
+  if(request===boardRequest&&id===track&&['shop','race'].includes(tab))txt('scores','Online leaderboard unavailable.');
  }
 }
 function setupSummary(label,carSetup){
@@ -313,17 +325,26 @@ function showLibrary(){
 function switchTab(t){
  tab=t;
  $('trial').classList.toggle('hidden',t!=='tracks');
- const active=t==='shop'?'tracks':t;
+ txt('sessionMode',t==='race'?'Timed lap':'Track setup');
+ const active=['race','shop'].includes(t)?'tracks':t;
+ $('shop').classList.toggle('running',t==='race');$('shop').classList.remove('showBoard');$('gapPanel').classList.add('hidden');
  document.querySelectorAll('header button').forEach(b=>b.classList.toggle('active',b.dataset.tab===active));
- for(const view of ['tracks','shop','race','library'])$(view).classList.toggle('hidden',view!==t);
- txt('title',({tracks:'Tracks',shop:names[id],race:'Lap view',library:'Workshop'})[t]);
+ for(const view of ['tracks','shop','race','library'])$(view).classList.toggle('hidden',view!==t&&!(view==='shop'&&t==='race'));
+ txt('title',({tracks:'Tracks',shop:names[id],race:names[id],library:'Workshop'})[t]);
  if(t==='tracks')showTracks();
  if(t==='library')showLibrary();
- if(t==='shop'){refresh();displaySlots();board();}
+ if(t==='shop'){cancelAnimationFrame(frame);refresh();displaySlots();board();}
  if(t==='race'){if(race)race.last=performance.now();renderRace();}
 }
 document.querySelectorAll('[data-tab],[data-go]').forEach(b=>b.onclick=()=>switchTab(b.dataset.tab||b.dataset.go));
-$('run').onclick=$('again').onclick=start;$('speed').onclick=()=>{rate=rate===1?2:1;txt('speed',rate+'× speed');};
+$('run').onclick=start;
+$('again').onclick=()=>{
+ if(!race?.finished)return;
+ race.elapsed=0;race.last=performance.now();$('again').disabled=true;
+ $('sectorReport').classList.add('hidden');renderRace();
+};
+$('standings').onclick=()=>{$('shop').classList.add('showBoard');board();$('board').scrollIntoView({block:'nearest'});};
+$('speed').onclick=()=>{rate=rate===1?2:1;txt('speed',rate+'× speed');};
 window.addEventListener('resize',()=>{if(tab==='tracks')showTracks();if(tab==='shop')refresh();if(tab==='race')renderRace();});setup();switchTab('tracks');
 
 $('fresh').onclick=()=>{history.push(structuredClone(setup().cuts));setup().cuts=blank().cuts;save();refresh();message('Fresh blank fitted. Undo restores the previous carving.');};

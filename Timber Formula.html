@@ -41,20 +41,25 @@ h1,h2,h3,header b,.cardBody strong,.trial strong,.sessionBar .circuitIdentity b,
 header b{font-size:26px}.cardBody strong{font-size:27px}.boardRow,.sessionTimes b,.gapPanel b,.gauges output{font-variant-numeric:tabular-nums}
 .slotRow{display:grid;grid-template-columns:minmax(65px,1fr) auto auto;gap:4px;margin:5px 0}.slotRow input{min-width:0;border:1px solid #abb7a3;background:#fffdf5;border-radius:4px;padding:4px 7px}.slotRow button{font-size:13px;padding:5px 8px}
 .boardRow{grid-template-columns:3.2em minmax(0,1fr) 6.5em 6.7em;gap:6px;font-variant-numeric:tabular-nums}.boardRow span:nth-child(n+3){text-align:right;white-space:nowrap}.boardRow span:nth-child(2){overflow-wrap:anywhere}.boardRow span:first-child{font-weight:bold;color:#304d3c}.boardRow.timingHead{position:sticky;top:0;background:#fbf9ef;font-size:11px;text-transform:uppercase;letter-spacing:.04em}#scores{max-height:155px}
+.circuitStage{position:relative;background:#e4e8d9;border-radius:0 0 8px 8px;margin-bottom:12px}.circuitStage canvas{display:block;width:100%;height:112px}.circuitStage .gapPanel{position:absolute;top:8px;left:10px;margin:0;gap:16px;padding:5px 9px}.circuitStage .gapPanel b{font-size:22px}.circuitStage .gapPanel strong{font-size:15px}.running .circuitStage canvas{height:clamp(290px,54vh,570px)}.running .workArea,.running .benchFoot,.running #run,.running #board{display:none}.running.showBoard #board{display:block}#shop #board{padding:16px;margin-top:14px;background:#fbf9ef;border:1px solid #ccd2c2;border-radius:7px}#race .group{flex-wrap:wrap}
+@media(min-width:760px){#shop:not(.running) .sessionBar{padding-left:154px;min-height:84px;border-radius:8px;position:relative}#shop:not(.running) .circuitStage{width:128px;margin:-74px 0 24px 12px}#shop:not(.running) .circuitStage canvas{height:62px}#shop:not(.running) .circuitStage{border-radius:6px}}
 </style>
-<header><b><i>≋</i> Timber Formula</b><nav><button class="active" data-tab="tracks">Tracks</button><button data-tab="library">Workshop</button><button data-tab="race">Lap view</button></nav></header>
+<header><b><i>≋</i> Timber Formula</b><nav><button class="active" data-tab="tracks">Tracks</button><button data-tab="library">Workshop</button></nav></header>
 <main><div class="heading"><h1 id="title">Tracks</h1><span class="tag">1:12 · Tabletop series</span></div>
 <div id="trial" class="trial"><div><strong>Three-circuit challenge</strong><p>Beat the stock car on two circuits.</p></div><div id="trialTracks"></div><output id="trialScore"></output></div><section id="tracks" class="trackGrid" aria-label="Choose a circuit"></section>
 <section id="library" class="hidden" aria-label="Your track setups"><div id="libraryList" class="libraryGrid"></div><div id="libraryEmpty" class="panel"><h2>Your setup shelf is empty</h2><p>Choose a circuit and adjust its car or save a comparison setup.</p><button data-go="tracks">Choose a track</button></div></section>
 <section id="shop" class="workstation hidden" aria-label="Car workshop">
   <div class="sessionBar">
-    <div class="circuitIdentity"><div><small id="trackNum"></small><b>Track setup</b></div></div>
+    <div class="circuitIdentity"><div><small id="trackNum"></small><b id="sessionMode">Track setup</b></div></div>
     <div class="sessionTimes"><div>Distance<b id="length"></b></div><div>Stock lap<b id="stock"></b></div><div>Best lap<b id="best"></b></div></div>
     <button id="run" class="primary">▶ &nbsp; Run lap</button>
   </div>
-  <div class="circuitOverview"><figure><figcaption>Track map</figcaption><canvas id="map" role="img" aria-label="Selected circuit layout"></canvas></figure>
- <section id="board" aria-label="Track leaderboard"><div class="boardHead"><div><small>TRACK TIMES</small><h2>Leaderboard</h2></div><label>Driver <input class="boardInput" id="driver" maxlength="20"></label></div><div id="scores"></div></section></div>
- <div class="workArea">
+  <div class="circuitStage"><canvas id="map" aria-label="Circuit map and lap replay"></canvas><div id="gapPanel" class="gapPanel hidden" aria-label="Lap timing comparison">
+ <div><small id="gapPhase"></small><strong id="gapState"></strong></div>
+ <div class="gapNumbers"><b id="gapTime"></b><small id="gapTarget"></small></div>
+</div></div>
+<div id="race" class="hidden"><div class="row"><span id="runSpec"></span><b class="mono" id="clock"></b></div><div id="sectorReport" class="hidden"><div class="reportTitle"><h3>Sector times</h3><label>Compare with <select id="reference"><option value="previous">Previous run</option><option value="stock">Stock car</option><option id="refSlot0" value="slot0">Slot 1</option><option id="refSlot1" value="slot1">Slot 2</option><option id="refSlot2" value="slot2">Slot 3</option></select></label></div><div class="splits" id="splits"></div><p id="lapBest" class="sub"></p></div><div class="tools"><strong id="raceInfo"></strong><div class="group"><button id="speed">1× speed</button><button id="again">Replay lap</button><button id="standings">Standings</button><button data-go="shop" class="chosen">Adjust setup</button></div></div></div>
+<div class="workArea">
     <div class="carStation">
       <div class="stage"><canvas id="car" aria-label="Wooden formula car, drag to carve or orbit"></canvas><span class="cutCallout" id="cutCue"></span><small class="corner" id="woodLabel">TF–01 / Maple</small><select class="view" id="view" aria-label="Camera view"><option>Isometric</option><option>Top</option><option>Side</option><option>Underside</option><option>Front</option><option disabled>Free orbit</option></select></div>
       <div class="readout"><div class="readoutTitle"><h3>Aero balance</h3><small>vs stock · same speed</small></div>
@@ -78,12 +83,8 @@ header b{font-size:26px}.cardBody strong{font-size:27px}.boardRow,.sessionTimes 
   <div class="benchFoot"><details><summary>How drag and downforce work</summary><p>Drag costs speed on straights. Downforce helps the tyres hold faster corners. A steeper wing usually adds both, until the wing stalls and loses grip.</p></details>
     <div class="specs"><span>Race mass <b>180 g</b></span><span>Ballast <b id="ballast"></b></span><span>Motor <b>7 W</b></span></div>
   </div>
-</section>
-<section id="race" class="panel hidden"><div class="row"><h2 id="raceName"></h2><span class="mono" id="clock"></span></div>
-<div id="gapPanel" class="gapPanel hidden" aria-label="Lap timing comparison">
- <div><small id="gapPhase"></small><strong id="gapState"></strong></div>
- <div class="gapNumbers"><b id="gapTime"></b><small id="gapTarget"></small></div>
-</div><div id="sectorReport" class="hidden"><div class="reportTitle"><h3>Sector times</h3><label>Compare with <select id="reference"><option value="previous">Previous run</option><option value="stock">Stock car</option><option id="refSlot0" value="slot0">Slot 1</option><option id="refSlot1" value="slot1">Slot 2</option><option id="refSlot2" value="slot2">Slot 3</option></select></label></div><div class="splits" id="splits"></div><p id="lapBest" class="sub"></p></div><canvas class="raceCanvas" id="raceMap"></canvas><div class="tools"><span id="raceInfo"></span><div class="group"><button id="speed">1× speed</button><button id="again">Run again</button><button data-go="shop">Track setup</button></div></div></section>
+<section id="board" aria-label="Track leaderboard"><div class="boardHead"><div><small>TRACK TIMES</small><h2>Leaderboard</h2></div><label>Driver <input class="boardInput" id="driver" maxlength="20"></label></div><div id="scores"></div></section></section>
+
 </main><script type="module">const parts=['Front wing','Nose','Sidepods','Rear wing','Diffuser'];
 const nx=12,ny=10;
 const blank=()=>({cuts:parts.map(()=>Array(nx*ny).fill(0)),angles:[6,8],pressure:[1,1],height:1,gurney:false,wood:"Maple"});
@@ -509,11 +510,12 @@ function showGap(seconds,finished,target){
  txt('gapTime',sign+(ms/1000).toFixed(3)+' s');
  txt('gapTarget','vs '+target);
 }
-function renderRace(){cancelAnimationFrame(frame);if(tab!=='race')return;txt('raceName',names[id]);if(!race){$('gapPanel').classList.add('hidden');$('sectorReport').classList.add('hidden');drawTrack($('raceMap'),circuit(id),[]);txt('clock','0.000 s');txt('raceInfo','Ready on the grid');return;}
+function renderRace(){cancelAnimationFrame(frame);if(tab!=='race')return;if(!race){$('gapPanel').classList.add('hidden');$('sectorReport').classList.add('hidden');drawTrack($('map'),circuit(id),[]);txt('clock','0.000 s');txt('raceInfo','Ready on the grid');return;}
  let now=performance.now();race.elapsed=Math.min(race.run.total,race.elapsed+(now-race.last)*rate/1000);race.last=now;const t=race.elapsed,r=race.run,g=race.ghost,pos=progress(r,t),idx=Math.min(r.p.length-1,Math.floor(pos)),gt=g.time[idx]+(pos-idx)*(g.time[idx+1]-g.time[idx]),gap=t-gt;
- drawTrack($('raceMap'),r.p,[{progress:progress(g,t),ghost:true},{progress:pos}]);txt('clock',fmt(t));showGap(gap,t>=r.total,race.label);
- if(t<r.total){frame=requestAnimationFrame(renderRace);return;}if(!race.finished){race.finished=true;const rec=data[id];if(!rec.best||r.total<rec.best){rec.best=r.total;rec.ghost=race.s;}rec.previous=race.s;save();showReport();submit(race.s,id);}}
-function start(){txt('raceInfo','');let s=structuredClone(setup());
+ drawTrack($('map'),r.p,[{progress:progress(g,t),ghost:true},{progress:pos}]);txt('clock',fmt(t));showGap(gap,t>=r.total,race.label);
+ if(t<r.total){frame=requestAnimationFrame(renderRace);return;}$('again').disabled=false;
+ if(!race.finished){race.finished=true;const rec=data[id];if(!rec.best||r.total<rec.best){rec.best=r.total;rec.ghost=race.s;}rec.previous=race.s;save();submit(race,id);}showReport();}
+function start(){$('again').disabled=true;txt('raceInfo','');let s=structuredClone(setup());
  const rec=data[id],references={stock:cards[id].stock};
  if(valid(rec.previous))references.previous=lap(rec.previous,id);
  for(let i=0;i<3;i++){
@@ -523,8 +525,19 @@ function start(){txt('raceInfo','');let s=structuredClone(setup());
  }
  $('reference').value=references.previous?'previous':'stock';
  $('sectorReport').classList.add('hidden');
- race={s,references,run:lap(s,id),ghost:lap(valid(data[id].ghost)?data[id].ghost:blank(),id),label:data[id].best?'personal best':'stock',elapsed:0,last:performance.now()};switchTab('race');}
-async function submit(s,track){if(location.protocol==='file:')return;try{let res=await fetch('/api/v3/scores/'+track,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({s,name:data.name||'Guest driver'})});if(!res.ok)throw Error();if(tab==='shop'&&track===id)board();}catch{if(tab==='race')$('raceInfo').textContent+=' · Online submission unavailable';}}
+ race={s,references,run:lap(s,id),ghost:lap(valid(data[id].ghost)?data[id].ghost:blank(),id),label:data[id].best?'personal best':'stock',elapsed:0,last:performance.now()};txt('runSpec',(s.wood??'Maple')+' · Wings '+s.angles.join('° / ')+'° · Tyres '+s.pressure.map(v=>['low','standard','high'][v]).join(' / '));switchTab('race');}
+async function submit(completed,track){
+ if(location.protocol==='file:'){txt('raceInfo','Local lap');return;}
+ txt('raceInfo','Confirming position…');
+ try{
+  const response=await fetch('/api/v3/scores/'+track,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({s:completed.s,name:data.name||'Guest driver'})});
+  if(!response.ok)throw Error();
+  const result=await response.json();
+  if(track!==id||race!==completed)return;
+  txt('raceInfo','Personal best · P'+result.position+' · '+(result.position===1?'Leader':'+'+fmt(result.gap)+' to P1'));
+  board();
+ }catch{if(race===completed)txt('raceInfo','Online submission unavailable');}
+}
 let boardRequest=0;
 async function board(){
  const track=id,request=++boardRequest,scores=$('scores');
@@ -534,7 +547,7 @@ async function board(){
   if(!response.ok)throw Error();
   const rows=await response.json();
   if(!Array.isArray(rows))throw Error();
-  if(request!==boardRequest||id!==track||tab!=='shop')return;
+  if(request!==boardRequest||id!==track||!['shop','race'].includes(tab))return;
   scores.replaceChildren();
   if(!rows.length)txt('scores','Be the first to record a lap.');
   if(rows.length){
@@ -555,7 +568,7 @@ async function board(){
    scores.append(line);
   });
  }catch{
-  if(request===boardRequest&&id===track&&tab==='shop')txt('scores','Online leaderboard unavailable.');
+  if(request===boardRequest&&id===track&&['shop','race'].includes(tab))txt('scores','Online leaderboard unavailable.');
  }
 }
 function setupSummary(label,carSetup){
@@ -592,17 +605,26 @@ function showLibrary(){
 function switchTab(t){
  tab=t;
  $('trial').classList.toggle('hidden',t!=='tracks');
- const active=t==='shop'?'tracks':t;
+ txt('sessionMode',t==='race'?'Timed lap':'Track setup');
+ const active=['race','shop'].includes(t)?'tracks':t;
+ $('shop').classList.toggle('running',t==='race');$('shop').classList.remove('showBoard');$('gapPanel').classList.add('hidden');
  document.querySelectorAll('header button').forEach(b=>b.classList.toggle('active',b.dataset.tab===active));
- for(const view of ['tracks','shop','race','library'])$(view).classList.toggle('hidden',view!==t);
- txt('title',({tracks:'Tracks',shop:names[id],race:'Lap view',library:'Workshop'})[t]);
+ for(const view of ['tracks','shop','race','library'])$(view).classList.toggle('hidden',view!==t&&!(view==='shop'&&t==='race'));
+ txt('title',({tracks:'Tracks',shop:names[id],race:names[id],library:'Workshop'})[t]);
  if(t==='tracks')showTracks();
  if(t==='library')showLibrary();
- if(t==='shop'){refresh();displaySlots();board();}
+ if(t==='shop'){cancelAnimationFrame(frame);refresh();displaySlots();board();}
  if(t==='race'){if(race)race.last=performance.now();renderRace();}
 }
 document.querySelectorAll('[data-tab],[data-go]').forEach(b=>b.onclick=()=>switchTab(b.dataset.tab||b.dataset.go));
-$('run').onclick=$('again').onclick=start;$('speed').onclick=()=>{rate=rate===1?2:1;txt('speed',rate+'× speed');};
+$('run').onclick=start;
+$('again').onclick=()=>{
+ if(!race?.finished)return;
+ race.elapsed=0;race.last=performance.now();$('again').disabled=true;
+ $('sectorReport').classList.add('hidden');renderRace();
+};
+$('standings').onclick=()=>{$('shop').classList.add('showBoard');board();$('board').scrollIntoView({block:'nearest'});};
+$('speed').onclick=()=>{rate=rate===1?2:1;txt('speed',rate+'× speed');};
 window.addEventListener('resize',()=>{if(tab==='tracks')showTracks();if(tab==='shop')refresh();if(tab==='race')renderRace();});setup();switchTab('tracks');
 
 $('fresh').onclick=()=>{history.push(structuredClone(setup().cuts));setup().cuts=blank().cuts;save();refresh();message('Fresh blank fitted. Undo restores the previous carving.');};
