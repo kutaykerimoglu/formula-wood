@@ -57,11 +57,11 @@ function updateWidth(){
 }
 $('blade').oninput=()=>{updateWidth();drawCar();};
 updateWidth();
-function selectCircuit(next){
+function selectCircuit(next,view='overview'){
  if(id!==next){history=[];race=null;}
  id=next;
  data.track=id;
- switchTab('shop');displaySlots();
+ switchTab(view);displaySlots();
  save();
  message('Drag the chisel across the selected surface.');
  window.scrollTo(0,0);
@@ -130,7 +130,7 @@ function showTracks(){
  txt('gridKicker',returning?'Back at the table':'Your first timed lap');
  txt('gridHeadline',returning?names[featured]:'Build your first lap');
  txt('gridPrompt',returning?driven+' of '+cards.length+' circuits driven · '+profiles[featured]:'Choose a circuit, carve your wooden car, then watch it race the clock.');
- txt('gridStart',returning?'Open track setup →':'Start at '+names[featured]+' →');
+ txt('gridStart',returning?'Open circuit →':'Start at '+names[featured]+' →');
  $('gridStart').onclick=()=>selectCircuit(featured);
  gridRenderer.draw(valid(data[featured]?.s)?data[featured].s:blank(),null);
  let shown=0;
@@ -168,7 +168,7 @@ function loadSlot(track,index){
  const slot=data[track]?.slots?.[index];
  if(!valid(slot?.car))return;
  data[track].s=structuredClone(slot.car);
- history=[];hover=null;selectCircuit(track);message('Loaded '+slot.name+'.');
+ history=[];hover=null;selectCircuit(track,'shop');message('Loaded '+slot.name+'.');
 }
 const slotControls=Array.from({length:3},(_,index)=>{
  const row=document.createElement('div');row.className='slotRow';
@@ -205,7 +205,7 @@ function refresh(){const s=setup();
  s.pressure.forEach((value,axle)=>$('pressure'+axle).value=value);
  $('mount').value=s.height;$('lip').checked=s.gurney;
  $('wood').value=s.wood??'Maple';txt('woodLabel','TF–01 / '+$('wood').value);txt('woodHint',woods[$('wood').value].description);
- drawCar();updateAero();$('undo').disabled=!history.length;s.angles.forEach((v,i)=>{$('a'+i).value=v;txt('val'+i,v+'°');});txt('ballast',aero(s).ballast.toFixed(2)+' g');txt('stock',fmt(lap(blank(),id).total));txt('best',data[id].best?fmt(data[id].best):'—');txt('length',lap(s,id).length.toFixed(1)+' m');txt('trackNum','Circuit '+String(id+1).padStart(2,'0')+' of 20 · '+profiles[id]);if(tab==='shop')drawTrack($('map'),circuit(id));}
+ drawCar();updateAero();$('undo').disabled=!history.length;s.angles.forEach((v,i)=>{$('a'+i).value=v;txt('val'+i,v+'°');});txt('ballast',aero(s).ballast.toFixed(2)+' g');txt('stock',fmt(lap(blank(),id).total));txt('best',data[id].best?fmt(data[id].best):'—');txt('length',lap(s,id).length.toFixed(1)+' m');txt('trackNum','Circuit '+String(id+1).padStart(2,'0')+' of 20 · '+profiles[id]);if(tab==='shop'||tab==='overview')drawTrack($('map'),circuit(id));}
 function setMode(m){mode=m;for(let v of ['orbit','chisel'])$(v).classList.toggle('chosen',v===m);hover=null;car.style.cursor=m==='orbit'?'grab':knifeCursor;updateCue();drawCar();message(m==='orbit'?'Drag to rotate the car.':'Drag the chisel across the selected surface.');}
 $('orbit').onclick=()=>setMode('orbit');$('chisel').onclick=()=>setMode('chisel');$('view').onchange=e=>{renderer.view(e.target.value);drawCar();};
 $('undo').onclick=()=>{if(history.length){setup().cuts=history.pop();save();refresh();message('Last stroke undone.');}};
@@ -318,7 +318,7 @@ function start(){$('again').disabled=true;txt('raceInfo','');let s=structuredClo
  }
  $('reference').value = references.personalBest ? 'personalBest' : 'stock';
  $('sectorReport').classList.add('hidden');
- race={s,references,run:lap(s,id),ghost:references.personalBest ?? references.stock,label:references.personalBest?'personal best':'stock',elapsed:0,last:performance.now()};txt('runSpec',(s.wood??'Maple')+' · Wings '+s.angles.join('° / ')+'° · Tyres '+s.pressure.map(v=>['low','standard','high'][v]).join(' / '));switchTab('race');}
+ race={s,references,run:lap(s,id),ghost:references.personalBest ?? references.stock,label:references.personalBest?'personal best':'stock',elapsed:0,last:performance.now()};switchTab('race');}
 async function submit(completed,track){
  if(location.protocol==='file:'){txt('raceInfo','Local lap');return;}
  txt('raceInfo','Confirming position…');
@@ -342,7 +342,7 @@ async function board(){
   if(!response.ok)throw Error();
   const rows=await response.json();
   if(!Array.isArray(rows))throw Error();
-  if(request!==boardRequest||id!==track||!['shop','race'].includes(tab))return;
+  if(request!==boardRequest||id!==track||!['overview','shop','race'].includes(tab))return;
   scores.replaceChildren();
   if(!rows.length)txt('scores','Be the first to record a lap.');
   if(rows.length){
@@ -368,27 +368,48 @@ async function board(){
    scores.append(line);
   });
  }catch{
-  if(request===boardRequest&&id===track&&['shop','race'].includes(tab))txt('scores','Online leaderboard unavailable.');
+  if(request===boardRequest&&id===track&&['overview','shop','race'].includes(tab))txt('scores','Online leaderboard unavailable.');
  }
+}
+const summaryRenderer = makeRenderer($('summaryCar'));
+function displaySetupCard(carSetup){
+ const forces = aero(carSetup);
+ const pressureNames = ['Low','Standard','High'];
+ const surfaces = parts.filter((_,index)=>carSetup.cuts[index].some(Boolean));
+ txt('setupCardTitle',tab==='race'?'Setup used for this lap':'Current setup');
+ txt('summaryWood',carSetup.wood ?? 'Maple');
+ txt('summaryAngles',carSetup.angles.map(angle=>angle+'°').join(' / '));
+ txt('summaryTyres',carSetup.pressure.map(level=>pressureNames[level]).join(' / '));
+ txt('summaryHeight',['Low','Middle','High'][carSetup.height]);
+ txt('summaryFlap',carSetup.gurney?'Fitted':'Off');
+ txt('summaryCuts',surfaces.join(', ') || 'Stock blank');
+ for(const [key,label] of [['drag','Drag'],['front','Front'],['rear','Rear']]){
+  const percent = (forces[key]/stockAero[key]-1)*100;
+  txt('summary'+label,percent.toLocaleString('en',{maximumFractionDigits:2,signDisplay:'exceptZero'})+'%');
+ }
+ summaryRenderer.draw(carSetup,null);
 }
 function switchTab(t){
  tab=t;
  $('trial').classList.toggle('hidden',t!=='tracks');
- txt('sessionMode',t==='race'?'Timed lap':'Track setup');
- const active=['race','shop'].includes(t)?'tracks':t;
+ txt('sessionMode',t==='race'?'Timed lap':t==='overview'?'Track overview':'Track setup');
+ $('shop').classList.toggle('viewSummary',t==='overview'||t==='race');
+ const active=['overview','race','shop'].includes(t)?'tracks':t;
  $('shop').classList.toggle('running',t==='race');$('shop').classList.remove('showBoard');$('gapPanel').classList.add('hidden');
  document.querySelectorAll('header button').forEach(b=>b.classList.toggle('active',b.dataset.tab===active));
- for(const view of ['tracks','shop','race'])$(view).classList.toggle('hidden',view!==t&&!(view==='shop'&&t==='race'));
- txt('title',({tracks:'Tracks',shop:names[id],race:names[id]})[t]);
+ for(const view of ['tracks','shop','race'])$(view).classList.toggle('hidden',view!==t&&!(view==='shop'&&(t==='race'||t==='overview')));
+ txt('title',({tracks:'Tracks',overview:names[id],shop:names[id],race:names[id]})[t]);
  for(const key of ['gridIntro','gridTools'])$(key).classList.toggle('hidden',t!=='tracks');
  $('gridEmpty').classList.add('hidden');
  if(t==='tracks'){showTracks();updateGridStandings();}
 
- if(t==='shop'){
+ if(t==='overview'||t==='shop'){
   const profile = circuitProfile(id,cards[id].stock);
   txt('longStraight',profile.longestStraight.toFixed(1)+' m');
   txt('cornerMix',profile.counts.map((count,index)=>count+' '+['slow','medium','fast'][index]).join(' · '));
   cancelAnimationFrame(frame);refresh();displaySlots();board();}
+ if(t==='overview')displaySetupCard(setup());
+ if(t==='race' && race)displaySetupCard(race.s);
  if(t==='race'){if(race)race.last=performance.now();renderRace();}
 }
 document.querySelectorAll('[data-tab],[data-go]').forEach(b=>b.onclick=()=>switchTab(b.dataset.tab||b.dataset.go));
@@ -400,7 +421,7 @@ $('again').onclick=()=>{
 };
 $('standings').onclick=()=>{$('shop').classList.add('showBoard');board();$('board').scrollIntoView({block:'nearest'});};
 $('speed').onclick=()=>{rate=rate===1?2:1;txt('speed',rate+'× speed');};
-window.addEventListener('resize',()=>{if(tab==='tracks')showTracks();if(tab==='shop')refresh();if(tab==='race')renderRace();});setup();switchTab('tracks');
+window.addEventListener('resize',()=>{if(tab==='tracks')showTracks();if(tab==='shop')refresh();if(tab==='overview'){drawTrack($('map'),circuit(id));displaySetupCard(setup());}if(tab==='race'){displaySetupCard(race.s);renderRace();}});setup();switchTab('tracks');
 
 $('fresh').onclick=()=>{history.push(structuredClone(setup().cuts));setup().cuts=blank().cuts;save();refresh();message('Fresh blank fitted. Undo restores the previous carving.');};
 
