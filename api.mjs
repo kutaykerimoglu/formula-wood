@@ -1,9 +1,19 @@
 export default {async fetch(req,env){
  const url=new URL(req.url),api=url.pathname.match(/^\/api\/v3\/scores\/(\d+)$/);
+ const existing=req.headers.get('cookie')?.match(/(?:^|; )tfdriver=([a-f0-9-]{36})(?:;|$)/)?.[1];
+ if(url.pathname==='/api/v3/my-tracks' && req.method==='GET'){
+  const headers={'cache-control':'private, no-store'};
+  if(!existing)return Response.json([],{headers});
+  const query=`SELECT mine.track-2000 AS track,mine.time,
+   1+(SELECT COUNT(*) FROM scores AS rival WHERE rival.track=mine.track
+   AND (rival.time<mine.time OR (rival.time=mine.time AND rival.player<mine.player))) AS position
+   FROM scores AS mine WHERE mine.player=? AND mine.track>=2000 AND mine.track<?`;
+  const rows=await env.DB.prepare(query).bind(existing,2000+names.length).all();
+  return Response.json(rows.results,{headers});
+ }
  if(!api)return url.pathname==='/'?new Response(PAGE,{headers:{'content-type':'text/html; charset=utf-8'}}):new Response('Not found',{status:404});
  const track=Number(api[1]);if(track>=names.length)return new Response('Unknown track',{status:404});
  const courseKey=2000+track;
- const existing=req.headers.get('cookie')?.match(/(?:^|; )tfdriver=([a-f0-9-]{36})(?:;|$)/)?.[1];
  if(req.method==='GET' && url.searchParams.has('personal')){
   const query = `WITH ranked AS (
    SELECT name,time,player,ROW_NUMBER() OVER (ORDER BY time,player) AS position

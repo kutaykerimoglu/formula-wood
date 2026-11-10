@@ -70,12 +70,16 @@ const cards=names.map((name,i)=>{
  const button=document.createElement('button');
  button.className='trackCard';
  
- button.innerHTML='<canvas aria-hidden="true"></canvas><span class="cardBody"><small></small><strong></strong><span class="sub"></span><span class="cardRecord"></span></span>';
+ button.innerHTML='<span class="mapPlate"><canvas aria-hidden="true"></canvas><span class="trackDistance"></span></span><span class="cardBody"><span class="cardLine"><small></small><span class="cardStatus"></span></span><strong></strong><span class="sub"></span><span class="cardRecord"></span></span>';
  button.querySelector('strong').textContent=name;
- button.querySelector('small').textContent='Circuit '+String(i+1).padStart(2,'0')+' · '+profiles[i];
+ button.querySelector('small').textContent=profiles[i];
+ const stock = lap(blank(),i);
+ const profile = circuitProfile(i,stock);
+ button.style.setProperty('--plate',profile.longestStraight>8?'#d9e5df':profile.longestStraight<4?'#eee0c8':'#e2e6d4');
+ button.querySelector('.trackDistance').textContent=stock.length.toFixed(1)+' m';
  button.onclick=()=>selectCircuit(i);
  $('tracks').append(button);
- return {button,points:circuit(i),stock:lap(blank(),i)};
+ return {button,points:stock.p,stock};
 });
 // Put the street and speed circuits side by side in the gallery.
 $('tracks').insertBefore(cards[14].button,cards[1].button);
@@ -86,6 +90,32 @@ const trialButtons=trialCircuits.map(track=>{
  $('trialTracks').append(button);
  return button;
 });
+const gridRenderer = makeRenderer($('gridCar'));
+let standings = new Map();
+let gridFilter = 'all';
+let overviewRequest = 0;
+const slotsOn = track => data[track]?.slots?.filter(slot=>valid(slot?.car)).length || 0;
+const bestOn = track => Math.min(data[track]?.best || Infinity, standings.get(track)?.time || Infinity);
+async function updateGridStandings(){
+ if(location.protocol==='file:')return;
+ const request = ++overviewRequest;
+ try{
+  const response = await fetch('/api/v3/my-tracks');
+  if(!response.ok)throw Error();
+  const rows = await response.json();
+  if(request!==overviewRequest)return;
+  standings = new Map(rows.map(row=>[row.track,row]));
+ }catch{
+  if(request!==overviewRequest)return;
+  standings.clear();
+ }
+ if(tab==='tracks')showTracks();
+}
+document.querySelectorAll('[data-filter]').forEach(button=>button.onclick=()=>{
+ gridFilter=button.dataset.filter;
+ document.querySelectorAll('[data-filter]').forEach(item=>item.setAttribute('aria-pressed',String(item===button)));
+ showTracks();
+});
 function showTracks(){
  let beaten=0;
  trialCircuits.forEach((track,index)=>{
@@ -94,13 +124,33 @@ function showTracks(){
   trialButtons[index].textContent=(won?'✓ ':'')+names[track];
  });
  txt('trialScore',Math.min(beaten,2)+' / 2 beaten');
+ const driven = cards.filter((_,i)=>Number.isFinite(bestOn(i))).length;
+ const returning = data.track!=null || driven>0;
+ const featured = data.track ?? standings.keys().next().value ?? 0;
+ txt('gridKicker',returning?'Back at the table':'Your first timed lap');
+ txt('gridHeadline',returning?names[featured]:'Build your first lap');
+ txt('gridPrompt',returning?driven+' of '+cards.length+' circuits driven · '+profiles[featured]:'Choose a circuit, carve your wooden car, then watch it race the clock.');
+ txt('gridStart',returning?'Open track setup →':'Start at '+names[featured]+' →');
+ $('gridStart').onclick=()=>selectCircuit(featured);
+ gridRenderer.draw(valid(data[featured]?.s)?data[featured].s:blank(),null);
+ let shown=0;
  cards.forEach(({button,points,stock},i)=>{
-   drawTrack(button.querySelector('canvas'),points);
-   button.querySelector('.sub').textContent=stock.length.toFixed(1)+' m · Stock '+fmt(stock.total);
-   const saved = data[i]?.slots?.filter(slot=>valid(slot?.car)).length || 0;
-   const record = [saved ? saved+' saved setup'+(saved===1?'':'s') : '', data[i]?.best ? 'PB '+fmt(data[i].best) : ''];
-   button.querySelector('.cardRecord').textContent = record.filter(Boolean).join(' · ');
+   const saved=slotsOn(i), best=bestOn(i), drivenHere=Number.isFinite(best), rank=standings.get(i);
+   button.hidden=(gridFilter==='driven'&&!drivenHere)||(gridFilter==='saved'&&!saved);
+   if(button.hidden)return;
+   shown++;
+   drawTrack(button.querySelector('canvas'),points,undefined,undefined,true);
+   const status=button.querySelector('.cardStatus');
+   status.classList.toggle('ranked',Boolean(rank));
+   status.textContent=rank?'P'+rank.position:drivenHere?'Lap set':saved?'Prepared':'Untried';
+   button.querySelector('.sub').textContent=drivenHere?'PB '+fmt(best):'Stock lap '+fmt(stock.total);
+   const detail=drivenHere?(Math.abs(best-stock.total)<.0005?'Level with stock':fmt(Math.abs(best-stock.total))+(best<stock.total?' under stock':' over stock')):'';
+   button.querySelector('.cardRecord').textContent=[detail,saved?saved+' saved setup'+(saved===1?'':'s'):''].filter(Boolean).join(' · ') || 'Set your first time →';
  });
+ txt('gridCount',shown+' / '+cards.length+' circuits');
+ $('gridEmpty').classList.toggle('hidden',shown>0);
+ if(!shown)txt('gridEmpty',gridFilter==='saved'?'Save a setup on a circuit to find it here.':'Finish a lap to add a circuit here.');
+
 }
 $('driver').value=data.name||'Guest driver';$('driver').onchange=e=>{data.name=e.target.value.trim().slice(0,20)||'Guest driver';e.target.value=data.name;save();};
 for(let i=0;i<2;i++){const wrap=document.createElement('div');wrap.className='row';const label=document.createElement('label');label.htmlFor='a'+i;label.textContent=i?'Rear':'Front';const slider=document.createElement('input');slider.type='range';slider.min=0;slider.max=18;slider.step=1;slider.id='a'+i;const out=document.createElement('output');out.id='val'+i;slider.oninput=()=>{setup().angles[i]=+slider.value;save();refresh();};wrap.append(label,slider,out);$('angles').append(wrap);}
@@ -175,8 +225,19 @@ car.onpointermove=e=>{
  if(!drag)return;let x=e.offsetX,y=e.offsetY,dx=x-drag.x,dy=y-drag.y;if(mode==='orbit'){renderer.turn(dx,dy);$('view').value='Free orbit';}else{const steps=Math.ceil(Math.hypot(dx,dy)/4);for(let i=1;i<=steps;i++)if(cut(drag.x+i*dx/steps,drag.y+i*dy/steps))drag.changed=true;}
  drag.x=x;drag.y=y;drawCar();if(drag.changed)updateAero();};
 car.onpointerup=car.onpointercancel=()=>{if(!drag)return;if(drag.changed){history.push(drag.before);if(history.length>60)history.shift();save();message('Mirrored shaving removed.');}else if(mode==='chisel')message('Drag across the '+parts[part].toLowerCase()+' to remove a shaving.');drag=null;hover=null;refresh();};
-function drawTrack(c,p,markers,sectorGaps){const rect=c.getBoundingClientRect(),w=rect.width,h=rect.height;if(w<1||h<1)return;let dpr=Math.min(2,devicePixelRatio);c.width=w*dpr;c.height=h*dpr;let g=c.getContext('2d');g.scale(dpr,dpr);let xs=p.map(v=>v[0]),ys=p.map(v=>v[1]),minX=Math.min(...xs),maxX=Math.max(...xs),minY=Math.min(...ys),maxY=Math.max(...ys),k=.81*Math.min(w/(maxX-minX),h/(maxY-minY)),tr=([x,y])=>[(x-(minX+maxX)/2)*k+w/2,(y-(minY+maxY)/2)*k+h/2],q=p.map(tr);
- g.beginPath();q.forEach(([x,y],i)=>i?g.lineTo(x,y):g.moveTo(x,y));g.closePath();g.lineJoin='round';g.strokeStyle='#58664f';g.lineWidth=markers?Math.max(12,k*.34):2.5;g.stroke();if(!markers)return;g.lineWidth-=3;g.strokeStyle='#b5b4a0';g.stroke();g.lineWidth=1;g.setLineDash([4,8]);g.strokeStyle='#ede8d6';g.stroke();g.setLineDash([]);
+function drawTrack(c,p,markers,sectorGaps,cardMap=false){const rect=c.getBoundingClientRect(),w=rect.width,h=rect.height;if(w<1||h<1)return;let dpr=Math.min(2,devicePixelRatio);c.width=w*dpr;c.height=h*dpr;let g=c.getContext('2d');g.scale(dpr,dpr);let xs=p.map(v=>v[0]),ys=p.map(v=>v[1]),minX=Math.min(...xs),maxX=Math.max(...xs),minY=Math.min(...ys),maxY=Math.max(...ys),k=.81*Math.min(w/(maxX-minX),h/(maxY-minY)),tr=([x,y])=>[(x-(minX+maxX)/2)*k+w/2,(y-(minY+maxY)/2)*k+h/2],q=p.map(tr);
+ g.beginPath();q.forEach(([x,y],i)=>i?g.lineTo(x,y):g.moveTo(x,y));g.closePath();g.lineJoin='round';g.strokeStyle='#58664f';g.lineWidth=markers?Math.max(12,k*.34):2.5;g.stroke();
+ if(cardMap){
+  g.lineWidth=5;g.strokeStyle='#4b5e51';g.stroke();
+  g.lineWidth=1.5;g.strokeStyle='#ffefd0';g.stroke();
+  const [x,y]=q[0],angle=Math.atan2(q[1][1]-y,q[1][0]-x);
+  g.save();g.translate(x,y);g.rotate(angle);
+  for(let i=0;i<2;i++)for(let j=-2;j<2;j++){
+   g.fillStyle=(i+j)%2?'#fff9e3':'#293e32';g.fillRect(i*2,j*2,2,2);
+  }
+  g.restore();return;
+ }
+ if(!markers)return;g.lineWidth-=3;g.strokeStyle='#b5b4a0';g.stroke();g.lineWidth=1;g.setLineDash([4,8]);g.strokeStyle='#ede8d6';g.stroke();g.setLineDash([]);
  const bounds=sectorBounds(id);
  for(let sector=0;sector<3;sector++){
   const from=bounds[sector],end=bounds[sector+1];
@@ -265,6 +326,7 @@ async function submit(completed,track){
   const response=await fetch('/api/v3/scores/'+track,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({s:completed.s,name:data.name||'Guest driver'})});
   if(!response.ok)throw Error();
   const result=await response.json();
+  if(tab==='tracks')updateGridStandings();
   if(track!==id||race!==completed)return;
   txt('raceInfo','Personal best · P'+result.position+' · '+(result.position===1?'Leader':'+'+fmt(result.gap)+' to P1'));
   board();
@@ -318,7 +380,9 @@ function switchTab(t){
  document.querySelectorAll('header button').forEach(b=>b.classList.toggle('active',b.dataset.tab===active));
  for(const view of ['tracks','shop','race'])$(view).classList.toggle('hidden',view!==t&&!(view==='shop'&&t==='race'));
  txt('title',({tracks:'Tracks',shop:names[id],race:names[id]})[t]);
- if(t==='tracks')showTracks();
+ for(const key of ['gridIntro','gridTools'])$(key).classList.toggle('hidden',t!=='tracks');
+ $('gridEmpty').classList.add('hidden');
+ if(t==='tracks'){showTracks();updateGridStandings();}
 
  if(t==='shop'){
   const profile = circuitProfile(id,cards[id].stock);
