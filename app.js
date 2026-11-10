@@ -348,3 +348,10 @@ $('speed').onclick=()=>{rate=rate===1?2:1;txt('speed',rate+'× speed');};
 window.addEventListener('resize',()=>{if(tab==='tracks')showTracks();if(tab==='shop')refresh();if(tab==='race')renderRace();});setup();switchTab('tracks');
 
 $('fresh').onclick=()=>{history.push(structuredClone(setup().cuts));setup().cuts=blank().cuts;save();refresh();message('Fresh blank fitted. Undo restores the previous carving.');};
+
+document.querySelectorAll('[data-mode]').forEach(button=>button.onclick=()=>{
+ document.querySelectorAll('[data-mode]').forEach(item=>item.setAttribute('aria-pressed',String(item===button)));
+ document.querySelectorAll('[data-pane]').forEach(panel=>panel.hidden=panel.dataset.pane!==button.dataset.mode);
+ drawCar();
+});
+$('helpAero').onclick=()=>$('aeroHelp').showModal();

@@ -43,6 +43,18 @@ header b{font-size:26px}.cardBody strong{font-size:27px}.boardRow,.sessionTimes 
 .boardRow{grid-template-columns:3.2em minmax(0,1fr) 6.5em 6.7em;gap:6px;font-variant-numeric:tabular-nums}.boardRow span:nth-child(n+3){text-align:right;white-space:nowrap}.boardRow span:nth-child(2){overflow-wrap:anywhere}.boardRow span:first-child{font-weight:bold;color:#304d3c}.boardRow.timingHead{position:sticky;top:0;background:#fbf9ef;font-size:11px;text-transform:uppercase;letter-spacing:.04em}#scores{max-height:155px}
 .circuitStage{position:relative;background:#e4e8d9;border-radius:0 0 8px 8px;margin-bottom:12px}.circuitStage canvas{display:block;width:100%;height:112px}.circuitStage .gapPanel{position:absolute;top:8px;left:10px;margin:0;gap:16px;padding:5px 9px}.circuitStage .gapPanel b{font-size:22px}.circuitStage .gapPanel strong{font-size:15px}.running .circuitStage canvas{height:clamp(290px,54vh,570px)}.running .workArea,.running .benchFoot,.running #run,.running #board{display:none}.running.showBoard #board{display:block}#shop #board{padding:16px;margin-top:14px;background:#fbf9ef;border:1px solid #ccd2c2;border-radius:7px}#race .group{flex-wrap:wrap}
 @media(min-width:760px){#shop:not(.running) .sessionBar{padding-left:154px;min-height:84px;border-radius:8px;position:relative}#shop:not(.running) .circuitStage{width:128px;margin:-74px 0 24px 12px}#shop:not(.running) .circuitStage canvas{height:62px}#shop:not(.running) .circuitStage{border-radius:6px}}
+
+.pitLayout{display:grid;grid-template-columns:minmax(0,2.35fr) minmax(280px,1fr);gap:14px}
+#shop .pitLayout #board{margin:0;min-width:0}#scores{max-height:360px;overflow:auto}
+.pitLayout .workArea{grid-template-columns:minmax(0,1.25fr) minmax(265px,1fr);align-items:stretch}
+.workstation .pitLayout .carStation{position:static}.workstation .pitLayout .stage{flex:1;min-height:260px;height:auto}
+.pitLayout #car{position:absolute;inset:0}.pitLayout .specs{padding:8px 12px;flex-wrap:wrap}.setupSwitch,.aeroHeading{display:flex;align-items:center;gap:4px}
+.setupSwitch{margin:8px 0;flex-wrap:wrap}.setupSwitch button{font-size:13px;padding:4px 9px}.setupSwitch [aria-pressed=true]{background:#2c4839;color:white}
+[data-pane][hidden]{display:none!important}.aeroHeading{gap:8px}#helpAero{background:transparent;color:inherit;border:1px solid currentColor;border-radius:50%;width:23px;height:23px;line-height:1;padding:0}
+#aeroHelp{color:var(--ink);background:#faf8ef;padding:24px;border:1px solid #abb7a3;border-radius:8px;width:min(460px,90vw)}#aeroHelp::backdrop{background:#16281ee0}#aeroHelp form{display:flex;align-items:center;justify-content:space-between;gap:12px}#aeroHelp h3{margin-top:16px}#aeroHelp p{margin-top:5px}
+.running .pitLayout{display:block}.pitLayout .boardRow{grid-template-columns:2.2em minmax(0,1fr) auto auto;gap:8px}
+@media(max-width:1040px){.pitLayout .workArea{display:block}.workstation .pitLayout .stage{height:240px;min-height:0;flex:none}.adjustments{border-left:0}}
+@media(max-width:740px){.pitLayout{display:flex;flex-direction:column}.pitLayout #board{order:-1}.pitLayout #scores{max-height:128px}.running.showBoard .pitLayout #scores{max-height:320px}}
 </style>
 <header><b><i>≋</i> Timber Formula</b><nav><button class="active" data-tab="tracks">Tracks</button><button data-tab="library">Workshop</button></nav></header>
 <main><div class="heading"><h1 id="title">Tracks</h1><span class="tag">1:12 · Tabletop series</span></div>
@@ -59,33 +71,30 @@ header b{font-size:26px}.cardBody strong{font-size:27px}.boardRow,.sessionTimes 
  <div class="gapNumbers"><b id="gapTime"></b><small id="gapTarget"></small></div>
 </div></div>
 <div id="race" class="hidden"><div class="row"><span id="runSpec"></span><b class="mono" id="clock"></b></div><div id="sectorReport" class="hidden"><div class="reportTitle"><h3>Sector times</h3><label>Compare with <select id="reference"><option value="previous">Previous run</option><option value="stock">Stock car</option><option id="refSlot0" value="slot0">Slot 1</option><option id="refSlot1" value="slot1">Slot 2</option><option id="refSlot2" value="slot2">Slot 3</option></select></label></div><div class="splits" id="splits"></div><p id="lapBest" class="sub"></p></div><div class="tools"><strong id="raceInfo"></strong><div class="group"><button id="speed">1× speed</button><button id="again">Replay lap</button><button id="standings">Standings</button><button data-go="shop" class="chosen">Adjust setup</button></div></div></div>
-<div class="workArea">
+<div class="pitLayout"><div class="workArea">
     <div class="carStation">
       <div class="stage"><canvas id="car" aria-label="Wooden formula car, drag to carve or orbit"></canvas><span class="cutCallout" id="cutCue"></span><small class="corner" id="woodLabel">TF–01 / Maple</small><select class="view" id="view" aria-label="Camera view"><option>Isometric</option><option>Top</option><option>Side</option><option>Underside</option><option>Front</option><option disabled>Free orbit</option></select></div>
-      <div class="readout"><div class="readoutTitle"><h3>Aero balance</h3><small>vs stock · same speed</small></div>
+      <div class="readout"><div class="readoutTitle"><div class="aeroHeading"><h3>Aero balance</h3><button id="helpAero" aria-label="Explain drag and downforce" aria-haspopup="dialog">?</button></div><small>vs stock · same speed</small></div>
         <div class="gauges"><div>Drag<output id="dragDelta"></output></div><div>Front downforce<output id="frontDelta"></output></div><div>Rear downforce<output id="rearDelta"></output></div></div>
-      </div>
+      </div><div class="specs"><span>Race mass <b>180 g</b></span><span>Ballast <b id="ballast"></b></span><span>Motor <b>7 W</b></span></div>
     </div>
     <div class="adjustments">
-      <h3>Car setup</h3><fieldset><legend>Wood</legend><select id="wood" aria-label="Wood type"><option>Maple</option><option>Ash</option><option>Birch</option></select><p id="woodHint" class="partHint"></p></fieldset>
-      <fieldset><legend>Carving surface</legend><div class="parts" id="parts"></div>
+      <h3>Car setup</h3><div class="setupSwitch" role="group" aria-label="Setup controls"><button data-mode="shape" aria-pressed="true">Shape</button><button data-mode="aero" aria-pressed="false">Aero</button><button data-mode="tyres" aria-pressed="false">Tyres</button><button data-mode="saved" aria-pressed="false">Saved</button></div><fieldset data-pane="shape"><legend>Wood</legend><select id="wood" aria-label="Wood type"><option>Maple</option><option>Ash</option><option>Birch</option></select><p id="woodHint" class="partHint"></p></fieldset>
+      <fieldset data-pane="shape"><legend>Carving surface</legend><div class="parts" id="parts"></div>
         <p id="partHint" class="partHint"></p>
         <div class="widthControl"><label for="blade">Chisel width</label><span id="widthSample" aria-hidden="true"></span><input id="blade" type="range" min="1" max="4" value="2" aria-describedby="widthHelp"><output id="widthName" for="blade"></output></div>
         <p class="sub" id="widthHelp">Width sets the breadth of each shaving.</p>
       </fieldset>
-      <fieldset><legend>Wing tilt</legend><div id="angles"></div></fieldset>
-      <fieldset><legend>Aero fittings</legend><div class="setupOption"><label for="mount">Front wing height</label><select id="mount"><option value="0">Low</option><option value="1">Middle</option><option value="2">High</option></select></div><label class="setupOption">Rear Gurney flap <input id="lip" type="checkbox"></label><p class="sub">Clearance changes front grip. The rear lip adds load and drag.</p></fieldset>
-      <fieldset><legend>Warm tyre pressures</legend><div class="pressurePair"><label>Front <select id="pressure0"><option value="0">Low</option><option value="1">Standard</option><option value="2">High</option></select></label><label>Rear <select id="pressure1"><option value="0">Low</option><option value="1">Standard</option><option value="2">High</option></select></label></div><p class="sub">Softer tyres roll less freely. Corner grip depends on how much load each axle carries.</p></fieldset>
-      <div class="tools"><div class="group"><button id="chisel" class="chosen"><svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><path d="M2 29l4-12 9-8 6 6-9 9z" fill="#e5ede8" stroke="#263d32" stroke-width="1.7"/><path d="M2 29l14-15-4 10z" fill="#91a59c"/><path d="M14 10l8-8q2-2 4 0l4 4q2 2 0 4l-9 8z" fill="#ce8e50" stroke="#263d32" stroke-width="1.7"/><path d="M17 9l6 6" stroke="#f3d394" stroke-width="2"/></svg> Chisel</button><button id="orbit">⟳ Orbit</button><button id="undo">↶ Undo</button></div><button id="fresh">Fresh blank</button></div>
-      <fieldset><legend>Saved setups</legend><div id="slots"></div></fieldset><div id="status" role="status">Drag to carve. Each stroke is mirrored.</div>
+      <fieldset data-pane="aero" hidden><legend>Wing tilt</legend><div id="angles"></div></fieldset>
+      <fieldset data-pane="aero" hidden><legend>Aero fittings</legend><div class="setupOption"><label for="mount">Front wing height</label><select id="mount"><option value="0">Low</option><option value="1">Middle</option><option value="2">High</option></select></div><label class="setupOption">Rear Gurney flap <input id="lip" type="checkbox"></label><p class="sub">Clearance changes front grip. The rear lip adds load and drag.</p></fieldset>
+      <fieldset data-pane="tyres" hidden><legend>Warm tyre pressures</legend><div class="pressurePair"><label>Front <select id="pressure0"><option value="0">Low</option><option value="1">Standard</option><option value="2">High</option></select></label><label>Rear <select id="pressure1"><option value="0">Low</option><option value="1">Standard</option><option value="2">High</option></select></label></div><p class="sub">Softer tyres roll less freely. Corner grip depends on how much load each axle carries.</p></fieldset>
+      <div data-pane="shape" class="tools"><div class="group"><button id="chisel" class="chosen"><svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><path d="M2 29l4-12 9-8 6 6-9 9z" fill="#e5ede8" stroke="#263d32" stroke-width="1.7"/><path d="M2 29l14-15-4 10z" fill="#91a59c"/><path d="M14 10l8-8q2-2 4 0l4 4q2 2 0 4l-9 8z" fill="#ce8e50" stroke="#263d32" stroke-width="1.7"/><path d="M17 9l6 6" stroke="#f3d394" stroke-width="2"/></svg> Chisel</button><button id="orbit">⟳ Orbit</button><button id="undo">↶ Undo</button></div><button id="fresh">Fresh blank</button></div>
+      <fieldset data-pane="saved" hidden><legend>Saved setups</legend><div id="slots"></div></fieldset><div id="status" role="status">Drag to carve. Each stroke is mirrored.</div>
     </div>
   </div>
-  <div class="benchFoot"><details><summary>How drag and downforce work</summary><p>Drag costs speed on straights. Downforce helps the tyres hold faster corners. A steeper wing usually adds both, until the wing stalls and loses grip.</p></details>
-    <div class="specs"><span>Race mass <b>180 g</b></span><span>Ballast <b id="ballast"></b></span><span>Motor <b>7 W</b></span></div>
-  </div>
-<section id="board" aria-label="Track leaderboard"><div class="boardHead"><div><small>TRACK TIMES</small><h2>Leaderboard</h2></div><label>Driver <input class="boardInput" id="driver" maxlength="20"></label></div><div id="scores"></div></section></section>
+<section id="board" aria-label="Track leaderboard"><div class="boardHead"><div><small>TRACK TIMES</small><h2>Leaderboard</h2></div><label>Driver <input class="boardInput" id="driver" maxlength="20"></label></div><div id="scores"></div></section></div></section>
 
-</main><script type="module">const parts=['Front wing','Nose','Sidepods','Rear wing','Diffuser'];
+<dialog id="aeroHelp" aria-labelledby="helpTitle"><form method="dialog"><h2 id="helpTitle">Reading the aero balance</h2><button autofocus aria-label="Close aero guide">Close</button></form><p>The gauges compare your build with the stock car at the same speed.</p><h3>Drag · straights</h3><p>Drag pushes against the car. A steeper wing can add grip, but with the same motor it takes longer to gain speed on a straight.</p><h3>Downforce · corners</h3><p>Downforce presses the tyres into the track. Its effect grows with speed, so it matters more through a fast bend than a slow hairpin. Too much wing tilt can stall the wing: drag remains high as load falls away.</p><h3>Balance · front and rear</h3><p>Read the axle gauges together. Extra rear load offers little cornering benefit if the front tyres already limit the car. Compare sector times after a change to see where the trade pays off.</p></dialog></main><script type="module">const parts=['Front wing','Nose','Sidepods','Rear wing','Diffuser'];
 const nx=12,ny=10;
 const blank=()=>({cuts:parts.map(()=>Array(nx*ny).fill(0)),angles:[6,8],pressure:[1,1],height:1,gurney:false,wood:"Maple"});
 function valid(s){return !!s&&(s.wood===undefined||Object.hasOwn(woods,s.wood))&&Array.isArray(s.angles)&&s.angles.length===2&&s.angles.every(x=>Number.isInteger(x)&&x>=0&&x<=18)&&Array.isArray(s.cuts)&&s.cuts.length===parts.length&&Array.isArray(s.pressure)&&s.pressure.length===2&&s.pressure.every(level)&&level(s.height)&&typeof s.gurney==="boolean"&&s.cuts.every((a,p)=>Array.isArray(a)&&a.length===nx*ny&&a.every((x,i)=>Number.isInteger(x)&&x>=0&&x<=12&&(p===2||x===a[Math.floor(i/ny)*ny+ny-1-i%ny])));}
@@ -628,6 +637,13 @@ $('speed').onclick=()=>{rate=rate===1?2:1;txt('speed',rate+'× speed');};
 window.addEventListener('resize',()=>{if(tab==='tracks')showTracks();if(tab==='shop')refresh();if(tab==='race')renderRace();});setup();switchTab('tracks');
 
 $('fresh').onclick=()=>{history.push(structuredClone(setup().cuts));setup().cuts=blank().cuts;save();refresh();message('Fresh blank fitted. Undo restores the previous carving.');};
+
+document.querySelectorAll('[data-mode]').forEach(button=>button.onclick=()=>{
+ document.querySelectorAll('[data-mode]').forEach(item=>item.setAttribute('aria-pressed',String(item===button)));
+ document.querySelectorAll('[data-pane]').forEach(panel=>panel.hidden=panel.dataset.pane!==button.dataset.mode);
+ drawCar();
+});
+$('helpAero').onclick=()=>$('aeroHelp').showModal();
 </script><script type="text/plain" id="fontLicense">Copyright (c) 2009-2011 by Accademia di Belle Arti di Urbino and students of MA course of Visual design. Some rights reserved.
 
 This Font Software is licensed under the SIL Open Font License, Version 1.1.
