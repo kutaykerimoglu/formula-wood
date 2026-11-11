@@ -1,4 +1,4 @@
-# Timber Formula
+# Formula Wood
 
 Carve a 1:12 wooden Formula car, tune it, and race the clock on 20 tabletop circuits.
 Runs as a single Cloudflare Worker with a D1 (SQLite) leaderboard.
@@ -14,7 +14,7 @@ npm run check      # build + physics + API smoke checks (same as CI)
 ```
 
 The local database lives in `.wrangler/` and is created from `drizzle/*.sql` on start.
-`Timber Formula.html` is a build output that also works offline from `file://`.
+`Formula Wood.html` is a build output that also works offline from `file://`.
 
 ## How deploys work
 
@@ -31,8 +31,8 @@ fails when stock lap times change; run `node scripts/check.mjs --update` when th
 1. Sign in: `npx wrangler login`
 2. Create both databases and paste each printed `database_id` into `wrangler.toml`:
    ```bash
-   npx wrangler d1 create timber-formula
-   npx wrangler d1 create timber-formula-preview
+   npx wrangler d1 create formula-wood
+   npx wrangler d1 create formula-wood-preview
    ```
 3. In Cloudflare → *Manage account* → *Account API tokens*, create a token from the
    **Edit Cloudflare Workers** template and add **D1: Edit** to its permissions.

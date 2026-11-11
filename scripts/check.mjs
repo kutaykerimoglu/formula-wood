@@ -31,11 +31,11 @@ const DB = {prepare: sql => ({bind: (...args) => ({
  all: async () => ({results: []}),
  run: async () => { writes.push({sql, args}); return {}; },
 })})};
-const call = (path, init) => worker.fetch(new Request('https://tf.test' + path, init), {DB});
+const call = (path, init) => worker.fetch(new Request('https://fw.test' + path, init), {DB});
 
 let res = await call('/');
 assert.equal(res.status, 200);
-assert.match(await res.text(), /Timber Formula/);
+assert.match(await res.text(), /Formula Wood/);
 assert.equal((await call('/api/v3/scores/0')).status, 200);
 assert.equal((await call('/api/v3/scores/999')).status, 404);
 assert.equal((await call('/nope')).status, 404);
@@ -43,7 +43,7 @@ assert.equal((await call('/nope')).status, 404);
 res = await call('/api/v3/scores/0', {method: 'POST', headers: {origin: 'https://evil.test'}, body: '{}'});
 assert.equal(res.status, 403, 'cross-origin submissions must be rejected');
 
-res = await call('/api/v3/scores/0', {method: 'POST', headers: {origin: 'https://tf.test'},
+res = await call('/api/v3/scores/0', {method: 'POST', headers: {origin: 'https://fw.test'},
  body: JSON.stringify({s: blank(), name: 'CI'})});
 assert.equal(res.status, 200);
 const body = await res.json();
