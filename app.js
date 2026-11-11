@@ -1,5 +1,5 @@
 const $=id=>document.getElementById(id),txt=(id,t)=>$(id).textContent=t,fmt=t=>t.toFixed(3)+' s';
-const data=JSON.parse(localStorage.getItem('tf.workshop.1')||'{}'),save=()=>localStorage.setItem('tf.workshop.1',JSON.stringify(data));
+const data=JSON.parse(localStorage.getItem('fw.workshop.1')||'{}'),save=()=>localStorage.setItem('fw.workshop.1',JSON.stringify(data));
 // Course revisions invalidate lap times while preserving each wooden setup.
 if(data.courseVersion!==3){
  for(let i=0;i<names.length;i++){if(data[i]){delete data[i].best;delete data[i].ghost;delete data[i].previous;
@@ -204,7 +204,7 @@ $('lip').onchange=()=>{setup().gurney=$('lip').checked;save();refresh();};
 function refresh(){const s=setup();
  s.pressure.forEach((value,axle)=>$('pressure'+axle).value=value);
  $('mount').value=s.height;$('lip').checked=s.gurney;
- $('wood').value=s.wood??'Maple';txt('woodLabel','TF–01 / '+$('wood').value);txt('woodHint',woods[$('wood').value].description);
+ $('wood').value=s.wood??'Maple';txt('woodLabel','FW–01 / '+$('wood').value);txt('woodHint',woods[$('wood').value].description);
  drawCar();updateAero();$('undo').disabled=!history.length;s.angles.forEach((v,i)=>{$('a'+i).value=v;txt('val'+i,v+'°');});txt('ballast',aero(s).ballast.toFixed(2)+' g');txt('stock',fmt(lap(blank(),id).total));txt('best',data[id].best?fmt(data[id].best):'—');txt('length',lap(s,id).length.toFixed(1)+' m');txt('trackNum','Circuit '+String(id+1).padStart(2,'0')+' of 20 · '+profiles[id]);if(tab==='shop'||tab==='overview')drawTrack($('map'),circuit(id));}
 function setMode(m){mode=m;for(let v of ['orbit','chisel'])$(v).classList.toggle('chosen',v===m);hover=null;car.style.cursor=m==='orbit'?'grab':knifeCursor;updateCue();drawCar();message(m==='orbit'?'Drag to rotate the car.':'Drag the chisel across the selected surface.');}
 $('orbit').onclick=()=>setMode('orbit');$('chisel').onclick=()=>setMode('chisel');$('view').onchange=e=>{renderer.view(e.target.value);drawCar();};

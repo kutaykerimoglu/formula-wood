@@ -1,1 +1,17 @@
-{"type":"module","scripts":{"build":"node build.mjs"}}
+{
+  "type": "module",
+  "private": true,
+  "engines": {
+    "node": ">=22.12"
+  },
+  "scripts": {
+    "build": "node build.mjs",
+    "check": "node build.mjs && node scripts/check.mjs",
+    "db:migrate": "wrangler d1 migrations apply DB --local",
+    "dev": "node scripts/dev.mjs",
+    "deploy": "node build.mjs && wrangler d1 migrations apply DB --remote && wrangler deploy"
+  },
+  "devDependencies": {
+    "wrangler": "4.160.0"
+  }
+}
