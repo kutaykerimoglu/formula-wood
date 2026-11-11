@@ -13,7 +13,12 @@ build();
 execFileSync('npx', ['wrangler', 'd1', 'migrations', 'apply', 'DB', '--local'], {stdio: 'inherit'});
 
 let timer;
-for (const file of sources) fs.watch(file, () => { clearTimeout(timer); timer = setTimeout(build, 80); });
+// Watch the folder, not each file: editors that save by replacing the file
+// would otherwise silently end a per-file watch.
+fs.watch('.', (_, file) => {
+ if (!sources.includes(file)) return;
+ clearTimeout(timer); timer = setTimeout(build, 80);
+});
 
 // wrangler reloads the Worker whenever the rebuilt dist/server/index.js changes.
 const worker = spawn('npx', ['wrangler', 'dev'], {stdio: 'inherit'});

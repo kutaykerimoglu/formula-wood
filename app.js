@@ -127,10 +127,9 @@ function showTracks(){
  const driven = cards.filter((_,i)=>Number.isFinite(bestOn(i))).length;
  const returning = data.track!=null || driven>0;
  const featured = data.track ?? standings.keys().next().value ?? 0;
- txt('gridKicker',returning?'Back at the table':'Your first timed lap');
- txt('gridHeadline',returning?names[featured]:'Build your first lap');
- txt('gridPrompt',returning?driven+' of '+cards.length+' circuits driven · '+profiles[featured]:'Choose a circuit, carve your wooden car, then watch it race the clock.');
- txt('gridStart',returning?'Open circuit →':'Start at '+names[featured]+' →');
+ txt('gridHeadline',returning?names[featured]:'From a block of maple to a lap record');
+ txt('gridPrompt',returning?driven+' of '+cards.length+' circuits driven':'Choose a circuit, carve your wooden car, then watch it race the clock.');
+ txt('gridStart',returning?'Continue →':'Start at '+names[featured]+' →');
  $('gridStart').onclick=()=>selectCircuit(featured);
  gridRenderer.draw(valid(data[featured]?.s)?data[featured].s:blank(),null);
  let shown=0;
@@ -205,7 +204,7 @@ function refresh(){const s=setup();
  s.pressure.forEach((value,axle)=>$('pressure'+axle).value=value);
  $('mount').value=s.height;$('lip').checked=s.gurney;
  $('wood').value=s.wood??'Maple';txt('woodLabel','FW–01 / '+$('wood').value);txt('woodHint',woods[$('wood').value].description);
- drawCar();updateAero();$('undo').disabled=!history.length;s.angles.forEach((v,i)=>{$('a'+i).value=v;txt('val'+i,v+'°');});txt('ballast',aero(s).ballast.toFixed(2)+' g');txt('stock',fmt(lap(blank(),id).total));txt('best',data[id].best?fmt(data[id].best):'—');txt('length',lap(s,id).length.toFixed(1)+' m');txt('trackNum','Circuit '+String(id+1).padStart(2,'0')+' of 20 · '+profiles[id]);if(tab==='shop'||tab==='overview')drawTrack($('map'),circuit(id));}
+ drawCar();updateAero();$('undo').disabled=!history.length;s.angles.forEach((v,i)=>{$('a'+i).value=v;txt('val'+i,v+'°');});txt('ballast',aero(s).ballast.toFixed(2)+' g');txt('stock',fmt(lap(blank(),id).total));txt('best',data[id].best?fmt(data[id].best):'—');txt('length',lap(s,id).length.toFixed(1)+' m');txt('trackNum','Circuit '+String(id+1).padStart(2,'0')+' of '+names.length);if(tab==='shop'||tab==='overview')drawTrack($('map'),circuit(id));}
 function setMode(m){mode=m;for(let v of ['orbit','chisel'])$(v).classList.toggle('chosen',v===m);hover=null;car.style.cursor=m==='orbit'?'grab':knifeCursor;updateCue();drawCar();message(m==='orbit'?'Drag to rotate the car.':'Drag the chisel across the selected surface.');}
 $('orbit').onclick=()=>setMode('orbit');$('chisel').onclick=()=>setMode('chisel');$('view').onchange=e=>{renderer.view(e.target.value);drawCar();};
 $('undo').onclick=()=>{if(history.length){setup().cuts=history.pop();save();refresh();message('Last stroke undone.');}};
@@ -393,6 +392,7 @@ function switchTab(t){
  tab=t;
  $('trial').classList.toggle('hidden',t!=='tracks');
  txt('sessionMode',t==='race'?'Timed lap':t==='overview'?'Track overview':'Track setup');
+ txt('adjust',t==='shop'?'Done adjusting':'Adjust setup');
  $('shop').classList.toggle('viewSummary',t==='overview'||t==='race');
  const active=['overview','race','shop'].includes(t)?'tracks':t;
  $('shop').classList.toggle('running',t==='race');$('shop').classList.remove('showBoard');$('gapPanel').classList.add('hidden');
@@ -414,6 +414,7 @@ function switchTab(t){
 }
 document.querySelectorAll('[data-tab],[data-go]').forEach(b=>b.onclick=()=>switchTab(b.dataset.tab||b.dataset.go));
 $('run').onclick=start;
+$('adjust').onclick=()=>switchTab(tab==='shop'?'overview':'shop');
 $('again').onclick=()=>{
  if(!race?.finished)return;
  race.elapsed=0;race.last=performance.now();$('again').disabled=true;
