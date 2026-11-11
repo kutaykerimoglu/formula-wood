@@ -3,16 +3,16 @@ main = "dist/server/index.js"
 compatibility_date = "2026-09-01"
 
 # main is generated: run `npm run build` (dev/deploy scripts do this for you).
-# Production database. Replace database_id with the id printed by:
+# Production database, created with:
 #   npx wrangler d1 create formula-wood
 [[d1_databases]]
 binding = "DB"
 database_name = "formula-wood"
-database_id = "00000000-0000-0000-0000-000000000000"
+database_id = "17023ebb-bb8b-4578-a9e4-360dcf14acf4"
 migrations_dir = "drizzle"
 
 # Pull-request previews run as a separate Worker with its own database,
-# so testing on a preview link never touches the real leaderboard.
+# so testing on a preview link never touches the real leaderboard. Created with:
 #   npx wrangler d1 create formula-wood-preview
 [env.preview]
 name = "formula-wood-preview"
@@ -20,5 +20,5 @@ name = "formula-wood-preview"
 [[env.preview.d1_databases]]
 binding = "DB"
 database_name = "formula-wood-preview"
-database_id = "00000000-0000-0000-0000-000000000000"
+database_id = "c0407cbd-0180-4b88-b0ba-13534f821f65"
 migrations_dir = "drizzle"
